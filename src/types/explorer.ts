@@ -1,6 +1,8 @@
 import BigNumber from "bignumber.js";
-import { ErgoBox, Token } from "./connector";
+import { ErgoBox, Registers, Token } from "./connector";
 import { AssetStandard } from "./internal";
+
+type Amount = number | string | BigNumber;
 
 export type AddressAPIResponse<T> = {
   address: string;
@@ -31,7 +33,7 @@ type ExplorerDataInputBox = {
 export type ExplorerToken = {
   tokenId: string;
   index: number;
-  amount: number | string | BigNumber;
+  amount: Amount;
   name: string;
   decimals: number;
   type: string;
@@ -218,15 +220,68 @@ export type ExplorerPostApiV1MempoolTransactionsSubmitResponse = {
 export type ExplorerBox = {
   id: string;
   txId: string;
-  value: number | string | BigNumber;
+  value: Amount;
   index: number;
   creationHeight: number;
   ergoTree: string;
   address: string;
   assets: ExplorerToken[];
-  additionalRegisters: any;
+  additionalRegisters: Registers;
   spentTransactionId?: string;
   mainChain: boolean;
+};
+
+export type ExplorerV1TxInput = {
+  boxId: string;
+  value: Amount;
+  index: number;
+  spendingProof: string;
+  outputBlockId: string;
+  outputTransactionId: string;
+  outputIndex: number;
+  outputGlobalIndex: number;
+  outputCreatedAt: number;
+  outputSettledAt: number;
+  ergoTree: string;
+  address: string;
+  assets: ExplorerToken[];
+  additionalRegisters: Registers;
+};
+
+export type ExplorerV1TxOutput = {
+  boxId: string;
+  transactionId: string;
+  blockId: string;
+  value: Amount;
+  index: number;
+  globalIndex: number;
+  creationHeight: number;
+  settlementHeight: number;
+  ergoTree: string;
+  address: string;
+  assets: ExplorerToken[];
+  additionalRegisters: Registers;
+  spentTransactionId: string;
+  mainChain: boolean;
+};
+
+export type ExplorerV1Transaction = {
+  id: string;
+  blockId: string;
+  inclusionHeight: number;
+  timestamp: number;
+  index: number;
+  globalIndex: number;
+  numConfirmations: number;
+  inputs: ExplorerV1TxInput[];
+  dataInputs: string[];
+  outputs: ExplorerV1TxOutput[];
+  size: number;
+};
+
+export type ExplorerV1TxsByAddressResponse = {
+  items: ExplorerV1Transaction[];
+  total: number;
 };
 
 export function explorerBoxMapper(options: { asConfirmed: boolean }) {
