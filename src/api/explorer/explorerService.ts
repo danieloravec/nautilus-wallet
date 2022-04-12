@@ -1,12 +1,13 @@
 import { API_URL } from "@/constants/explorer";
 import {
-  AddressAPIResponse,
+  AddressApiResponse,
   AssetBalance,
   ExplorerBlockHeaderResponse,
   ExplorerBox,
   ExplorerPostApiV1MempoolTransactionsSubmitResponse,
-  ExplorerV0TransactionsPerAddressResponse,
-  ExplorerV1AddressBalanceResponse
+  ExplorerV0TxHistoryResponse,
+  ExplorerV1AddressBalanceResponse,
+  ExplorerV1TxHistoryResponse
 } from "@/types/explorer";
 import axios from "axios";
 import axiosRetry from "axios-retry";
@@ -25,24 +26,45 @@ const explorerTokenMarket = new ExplorerTokenMarket({ explorerUri: API_URL });
 axiosRetry(axios, { retries: 3, retryDelay: axiosRetry.exponentialDelay });
 
 class ExplorerService {
-  public async getTxHistory(
+  public async getV0TxHistory(
     address: string,
     params?: {
       offset?: number;
       limit?: number;
       concise?: boolean;
     }
-  ): Promise<AddressAPIResponse<ExplorerV0TransactionsPerAddressResponse>> {
+  ): Promise<AddressApiResponse<ExplorerV0TxHistoryResponse>> {
     const response = await axios.get(`${API_URL}/api/v0/addresses/${address}/transactions`, {
       params
     });
 
-    return { address, data: response.data };
+    return {
+      address,
+      data: response.data as ExplorerV0TxHistoryResponse
+    };
+  }
+
+  public async getV1TxHistory(
+    address: string,
+    params?: {
+      offset?: number;
+      limit?: number;
+      concise?: boolean;
+    }
+  ): Promise<AddressApiResponse<ExplorerV1TxHistoryResponse>> {
+    const response = await axios.get(`${API_URL}/api/v1/addresses/${address}/transactions`, {
+      params
+    });
+
+    return {
+      address,
+      data: response.data as ExplorerV1TxHistoryResponse
+    };
   }
 
   public async getAddressBalance(
     address: string
-  ): Promise<AddressAPIResponse<ExplorerV1AddressBalanceResponse>> {
+  ): Promise<AddressApiResponse<ExplorerV1AddressBalanceResponse>> {
     const response = await axios.get(`${API_URL}/api/v1/addresses/${address}/balance/total`);
     return { address, data: response.data };
   }
@@ -57,7 +79,7 @@ class ExplorerService {
     }
 
     const chunks = chunk(addresses, options.chunkBy);
-    let balances: AddressAPIResponse<ExplorerV1AddressBalanceResponse>[] = [];
+    let balances: AddressApiResponse<ExplorerV1AddressBalanceResponse>[] = [];
     for (const c of chunks) {
       balances = balances.concat(await this.getAddressesBalanceFromChunk(c));
     }
@@ -66,7 +88,7 @@ class ExplorerService {
   }
 
   private _parseAddressesBalanceResponse(
-    apiResponse: AddressAPIResponse<ExplorerV1AddressBalanceResponse>[]
+    apiResponse: AddressApiResponse<ExplorerV1AddressBalanceResponse>[]
   ): AssetBalance[] {
     let assets: AssetBalance[] = [];
 
@@ -116,7 +138,7 @@ class ExplorerService {
 
   public async getAddressesBalanceFromChunk(
     addresses: string[]
-  ): Promise<AddressAPIResponse<ExplorerV1AddressBalanceResponse>[]> {
+  ): Promise<AddressApiResponse<ExplorerV1AddressBalanceResponse>[]> {
     return await Promise.all(addresses.map((a) => this.getAddressBalance(a)));
   }
 
@@ -136,7 +158,7 @@ class ExplorerService {
 
   private async getUsedAddressesFromChunk(addresses: string[]): Promise<string[]> {
     const resp = await Promise.all(
-      addresses.map((address) => this.getTxHistory(address, { limit: 1, concise: true }))
+      addresses.map((address) => this.getV0TxHistory(address, { limit: 1, concise: true }))
     );
 
     const usedRaw = resp.filter((r) => r.data.total > 0);
@@ -152,7 +174,7 @@ class ExplorerService {
 
   private async getAddressUnspentBoxes(
     address: string
-  ): Promise<AddressAPIResponse<ExplorerBox[]>> {
+  ): Promise<AddressApiResponse<ExplorerBox[]>> {
     const response = await axios.get(
       `${API_URL}/api/v0/transactions/boxes/byAddress/unspent/${address}`
     );
@@ -174,7 +196,7 @@ class ExplorerService {
     return await Promise.all(boxIds.map((id) => this.getBox(id)));
   }
 
-  public async getUnspentBoxes(addresses: string[]): Promise<AddressAPIResponse<ExplorerBox[]>[]> {
+  public async getUnspentBoxes(addresses: string[]): Promise<AddressApiResponse<ExplorerBox[]>[]> {
     return await Promise.all(addresses.map((a) => this.getAddressUnspentBoxes(a)));
   }
 

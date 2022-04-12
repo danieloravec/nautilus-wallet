@@ -4,7 +4,7 @@ import { AssetStandard } from "./internal";
 
 type Amount = number | string | BigNumber;
 
-export type AddressAPIResponse<T> = {
+export type AddressApiResponse<T> = {
   address: string;
   data: T;
 };
@@ -48,10 +48,7 @@ export type ExplorerOutputBox = {
   ergoTree: string;
   address: string;
   assets: ExplorerToken[];
-  additionalRegisters: {
-    property1: string;
-    property2: string;
-  };
+  additionalRegisters: Registers;
   spentTransactionId: string;
   mainChain: boolean;
 };
@@ -59,7 +56,7 @@ export type ExplorerOutputBox = {
 /**
  * getApiV0AddressesP1Transactions response type
  */
-export type ExplorerV0TransactionsPerAddressResponse = {
+export type ExplorerV0TxHistoryResponse = {
   items: [
     {
       id: string;
@@ -261,7 +258,7 @@ export type ExplorerV1TxOutput = {
   address: string;
   assets: ExplorerToken[];
   additionalRegisters: Registers;
-  spentTransactionId: string;
+  spentTransactionId?: string | null;
   mainChain: boolean;
 };
 
@@ -279,7 +276,7 @@ export type ExplorerV1Transaction = {
   size: number;
 };
 
-export type ExplorerV1TxsByAddressResponse = {
+export type ExplorerV1TxHistoryResponse = {
   items: ExplorerV1Transaction[];
   total: number;
 };
