@@ -14,8 +14,8 @@ export function parseEIP4Asset(tokenId: string, box: ExplorerBox): IAssetInfo | 
   const r7 = decodeColl(box.additionalRegisters.R7, "hex");
   const assetInfo: IAssetInfo = {
     id: tokenId,
-    mintingBoxId: box.id,
-    mintingTransactionId: box.txId,
+    mintingBoxId: box.boxId,
+    mintingTransactionId: box.transactionId,
     emissionAmount: boxAsset.amount.toString(),
     name: boxAsset.name,
     decimals: boxAsset.decimals,

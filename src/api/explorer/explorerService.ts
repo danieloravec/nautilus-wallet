@@ -2,12 +2,11 @@ import { API_URL } from "@/constants/explorer";
 import {
   AddressApiResponse,
   AssetBalance,
-  ExplorerBlockHeaderResponse,
+  ExplorerBlockHeader,
   ExplorerBox,
-  ExplorerPostApiV1MempoolTransactionsSubmitResponse,
-  ExplorerV0TxHistoryResponse,
-  ExplorerV1AddressBalanceResponse,
-  ExplorerV1TxHistoryResponse
+  ExplorerSubmitTxResponse,
+  ExplorerAddressBalanceResponse,
+  ExplorerTxHistoryResponse
 } from "@/types/explorer";
 import axios from "axios";
 import axiosRetry from "axios-retry";
@@ -26,45 +25,27 @@ const explorerTokenMarket = new ExplorerTokenMarket({ explorerUri: API_URL });
 axiosRetry(axios, { retries: 3, retryDelay: axiosRetry.exponentialDelay });
 
 class ExplorerService {
-  public async getV0TxHistory(
+  public async getTxHistory(
     address: string,
     params?: {
       offset?: number;
       limit?: number;
       concise?: boolean;
     }
-  ): Promise<AddressApiResponse<ExplorerV0TxHistoryResponse>> {
-    const response = await axios.get(`${API_URL}/api/v0/addresses/${address}/transactions`, {
-      params
-    });
-
-    return {
-      address,
-      data: response.data as ExplorerV0TxHistoryResponse
-    };
-  }
-
-  public async getV1TxHistory(
-    address: string,
-    params?: {
-      offset?: number;
-      limit?: number;
-      concise?: boolean;
-    }
-  ): Promise<AddressApiResponse<ExplorerV1TxHistoryResponse>> {
+  ): Promise<AddressApiResponse<ExplorerTxHistoryResponse>> {
     const response = await axios.get(`${API_URL}/api/v1/addresses/${address}/transactions`, {
       params
     });
 
     return {
       address,
-      data: response.data as ExplorerV1TxHistoryResponse
+      data: response.data as ExplorerTxHistoryResponse
     };
   }
 
   public async getAddressBalance(
     address: string
-  ): Promise<AddressApiResponse<ExplorerV1AddressBalanceResponse>> {
+  ): Promise<AddressApiResponse<ExplorerAddressBalanceResponse>> {
     const response = await axios.get(`${API_URL}/api/v1/addresses/${address}/balance/total`);
     return { address, data: response.data };
   }
@@ -79,7 +60,7 @@ class ExplorerService {
     }
 
     const chunks = chunk(addresses, options.chunkBy);
-    let balances: AddressApiResponse<ExplorerV1AddressBalanceResponse>[] = [];
+    let balances: AddressApiResponse<ExplorerAddressBalanceResponse>[] = [];
     for (const c of chunks) {
       balances = balances.concat(await this.getAddressesBalanceFromChunk(c));
     }
@@ -88,7 +69,7 @@ class ExplorerService {
   }
 
   private _parseAddressesBalanceResponse(
-    apiResponse: AddressApiResponse<ExplorerV1AddressBalanceResponse>[]
+    apiResponse: AddressApiResponse<ExplorerAddressBalanceResponse>[]
   ): AssetBalance[] {
     let assets: AssetBalance[] = [];
 
@@ -127,7 +108,7 @@ class ExplorerService {
     return assets;
   }
 
-  private _isEmptyBalance(balance: ExplorerV1AddressBalanceResponse): boolean {
+  private _isEmptyBalance(balance: ExplorerAddressBalanceResponse): boolean {
     return (
       isZero(balance.confirmed.nanoErgs) &&
       isZero(balance.unconfirmed.nanoErgs) &&
@@ -138,7 +119,7 @@ class ExplorerService {
 
   public async getAddressesBalanceFromChunk(
     addresses: string[]
-  ): Promise<AddressApiResponse<ExplorerV1AddressBalanceResponse>[]> {
+  ): Promise<AddressApiResponse<ExplorerAddressBalanceResponse>[]> {
     return await Promise.all(addresses.map((a) => this.getAddressBalance(a)));
   }
 
@@ -158,7 +139,7 @@ class ExplorerService {
 
   private async getUsedAddressesFromChunk(addresses: string[]): Promise<string[]> {
     const resp = await Promise.all(
-      addresses.map((address) => this.getV0TxHistory(address, { limit: 1, concise: true }))
+      addresses.map((address) => this.getTxHistory(address, { limit: 1, concise: true }))
     );
 
     const usedRaw = resp.filter((r) => r.data.total > 0);
@@ -175,15 +156,13 @@ class ExplorerService {
   private async getAddressUnspentBoxes(
     address: string
   ): Promise<AddressApiResponse<ExplorerBox[]>> {
-    const response = await axios.get(
-      `${API_URL}/api/v0/transactions/boxes/byAddress/unspent/${address}`
-    );
+    const response = await axios.get(`${API_URL}/api/v1/boxes/unspent/byAddress/${address}`);
 
     return { address, data: response.data };
   }
 
   public async getBox(boxId: string): Promise<ExplorerBox> {
-    const response = await axios.get(`${API_URL}/api/v0/transactions/boxes/${boxId}`);
+    const response = await axios.get(`${API_URL}/api/v1/boxes/${boxId}`);
     return response.data;
   }
 
@@ -219,14 +198,12 @@ class ExplorerService {
     limit?: number;
     sortBy?: string;
     sortDirection?: string;
-  }): Promise<ExplorerBlockHeaderResponse[]> {
+  }): Promise<ExplorerBlockHeader[]> {
     const response = await axios.get(`${API_URL}/api/v1/blocks/headers`, { params });
     return response.data.items;
   }
 
-  public async sendTx(
-    signedTx: ErgoTx
-  ): Promise<ExplorerPostApiV1MempoolTransactionsSubmitResponse> {
+  public async sendTx(signedTx: ErgoTx): Promise<ExplorerSubmitTxResponse> {
     const response = await axios.post(
       `${API_URL}/api/v1/mempool/transactions/submit`,
       JSONBig.stringify(signedTx),

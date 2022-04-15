@@ -9,27 +9,6 @@ export type AddressApiResponse<T> = {
   data: T;
 };
 
-type ExplorerInputBox = {
-  id: string;
-  value: number | BigNumber;
-  index: number;
-  spendingProof: string;
-  transactionId: string;
-  outputTransactionId: string;
-  outputIndex: number;
-  address: string;
-};
-
-type ExplorerDataInputBox = {
-  id: string;
-  value: number;
-  index: number;
-  transactionId: string;
-  outputTransactionId: string;
-  outputIndex: number;
-  address: string;
-};
-
 export type ExplorerToken = {
   tokenId: string;
   index: number;
@@ -37,40 +16,6 @@ export type ExplorerToken = {
   name: string;
   decimals: number;
   type: string;
-};
-
-export type ExplorerOutputBox = {
-  id: string;
-  txId: string;
-  value: number | BigNumber;
-  index: number;
-  creationHeight: number;
-  ergoTree: string;
-  address: string;
-  assets: ExplorerToken[];
-  additionalRegisters: Registers;
-  spentTransactionId: string;
-  mainChain: boolean;
-};
-
-/**
- * getApiV0AddressesP1Transactions response type
- */
-export type ExplorerV0TxHistoryResponse = {
-  items: [
-    {
-      id: string;
-      headerId: string;
-      inclusionHeight: number;
-      timestamp: number;
-      index: number;
-      confirmationsCount: number;
-      inputs: ExplorerInputBox[];
-      dataInputs: ExplorerDataInputBox[];
-      outputs: ExplorerOutputBox[];
-    }
-  ];
-  total: number;
 };
 
 export type AssetBalance = {
@@ -96,15 +41,12 @@ type ExplorerBalanceItem = {
   ];
 };
 
-/**
- * response for getApiV1AddressesP1BalanceTotal
- */
-export type ExplorerV1AddressBalanceResponse = {
+export type ExplorerAddressBalanceResponse = {
   confirmed: ExplorerBalanceItem;
   unconfirmed: ExplorerBalanceItem;
 };
 
-export type ExplorerBlockHeaderResponse = {
+export type ExplorerBlockHeader = {
   id: string;
   parentId: string;
   version: number;
@@ -131,104 +73,11 @@ export type ExplorerBlockHeaderResponse = {
   };
 };
 
-export type ExplorerGetApiV1BlocksP1Response = {
-  block: {
-    header: ExplorerBlockHeaderResponse;
-    blockTransactions: [
-      {
-        id: string;
-        headerId: string;
-        inclusionHeight: number;
-        timestamp: number;
-        index: number;
-        confirmationsCount: number;
-        inputs: [
-          {
-            id: string;
-            value: number;
-            index: number;
-            spendingProof: string;
-            transactionId: string;
-            outputTransactionId: string;
-            outputIndex: number;
-            address: string;
-          }
-        ];
-        dataInputs: [
-          {
-            id: string;
-            value: number;
-            index: number;
-            transactionId: string;
-            outputTransactionId: string;
-            outputIndex: number;
-            address: string;
-          }
-        ];
-        outputs: [
-          {
-            id: string;
-            txId: string;
-            value: number;
-            index: number;
-            creationHeight: number;
-            ergoTree: string;
-            address: string;
-            assets: [
-              {
-                tokenId: string;
-                index: number;
-                amount: number;
-                name: string;
-                decimals: number;
-                type: string;
-              }
-            ];
-            additionalRegisters: {
-              property1: string;
-              property2: string;
-            };
-            spentTransactionId: string;
-            mainChain: boolean;
-          }
-        ];
-      }
-    ];
-    extension: {
-      headerId: string;
-      digest: string;
-      fields: {
-        property1: string;
-        property2: string;
-      };
-    };
-    adProofs: string;
-  };
-  references: {
-    previousId: string;
-    nextId: string;
-  };
-};
-
-export type ExplorerPostApiV1MempoolTransactionsSubmitResponse = {
+export type ExplorerSubmitTxResponse = {
   id: string;
 };
 
-export type ExplorerBox = {
-  id: string;
-  txId: string;
-  value: Amount;
-  index: number;
-  creationHeight: number;
-  ergoTree: string;
-  address: string;
-  assets: ExplorerToken[];
-  additionalRegisters: Registers;
-  spentTransactionId?: string;
-  mainChain: boolean;
-};
-
-export type ExplorerV1TxInput = {
+export type ExplorerTxInput = {
   boxId: string;
   value: Amount;
   index: number;
@@ -245,7 +94,7 @@ export type ExplorerV1TxInput = {
   additionalRegisters: Registers;
 };
 
-export type ExplorerV1TxOutput = {
+export type ExplorerBox = {
   boxId: string;
   transactionId: string;
   blockId: string;
@@ -262,7 +111,7 @@ export type ExplorerV1TxOutput = {
   mainChain: boolean;
 };
 
-export type ExplorerV1Transaction = {
+export type ExplorerTransaction = {
   id: string;
   blockId: string;
   inclusionHeight: number;
@@ -270,22 +119,22 @@ export type ExplorerV1Transaction = {
   index: number;
   globalIndex: number;
   numConfirmations: number;
-  inputs: ExplorerV1TxInput[];
+  inputs: ExplorerTxInput[];
   dataInputs: string[];
-  outputs: ExplorerV1TxOutput[];
+  outputs: ExplorerBox[];
   size: number;
 };
 
-export type ExplorerV1TxHistoryResponse = {
-  items: ExplorerV1Transaction[];
+export type ExplorerTxHistoryResponse = {
+  items: ExplorerTransaction[];
   total: number;
 };
 
 export function explorerBoxMapper(options: { asConfirmed: boolean }) {
   return (box: ExplorerBox) => {
     return {
-      boxId: box.id,
-      transactionId: box.txId,
+      boxId: box.boxId,
+      transactionId: box.transactionId,
       index: box.index,
       ergoTree: box.ergoTree,
       creationHeight: box.creationHeight,
