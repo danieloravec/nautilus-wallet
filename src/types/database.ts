@@ -75,17 +75,27 @@ export interface ITransaction {
   type: TransactionType;
   height: number;
   timeStamp: Date;
-  fee?: string;
-  assets: AssetAmount[];
+  state: TransactionState;
+  fee: AssetAmount;
+  sent: AssetAmount[];
+  received: AssetAmount[];
 }
 
 export type AssetAmount = {
+  address?: string;
   tokenId: string;
   amount: string;
 };
 
+export enum TransactionState {
+  Pending = "pending",
+  Confirmed = "confirmed",
+  Rejected = "rejected"
+}
+
 export enum TransactionType {
   Sent = "sent",
   Received = "received",
-  Intrawallet = "intrawallet"
+  Intrawallet = "intrawallet",
+  Swap = "swap"
 }
