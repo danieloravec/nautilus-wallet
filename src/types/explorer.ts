@@ -1,5 +1,7 @@
+import { asDict } from "@/utils/serializer";
 import BigNumber from "bignumber.js";
-import { ErgoBox, Registers, Token } from "./connector";
+import { isEmpty } from "lodash";
+import { ErgoBox, Token } from "./connector";
 import { AssetStandard } from "./internal";
 
 type Amount = number | string | BigNumber;
@@ -77,6 +79,14 @@ export type ExplorerSubmitTxResponse = {
   id: string;
 };
 
+export type ExplorerRegisters = {
+  [register: string]: {
+    serializedValue: string;
+    sigmaType: string;
+    renderedValue: string;
+  };
+};
+
 export type ExplorerTxInput = {
   boxId: string;
   value: Amount;
@@ -91,7 +101,7 @@ export type ExplorerTxInput = {
   ergoTree: string;
   address: string;
   assets: ExplorerToken[];
-  additionalRegisters: Registers;
+  additionalRegisters: ExplorerRegisters;
 };
 
 export type ExplorerBox = {
@@ -106,7 +116,7 @@ export type ExplorerBox = {
   ergoTree: string;
   address: string;
   assets: ExplorerToken[];
-  additionalRegisters: Registers;
+  additionalRegisters: ExplorerRegisters;
   spentTransactionId?: string | null;
   mainChain: boolean;
 };
@@ -143,9 +153,13 @@ export function explorerBoxMapper(options: { asConfirmed: boolean }) {
         return {
           tokenId: t.tokenId,
           amount: t.amount.toString()
-        } as Token;
+        };
       }),
-      additionalRegisters: box.additionalRegisters,
+      additionalRegisters: asDict(
+        Object.keys(box.additionalRegisters).map((x) => {
+          return { [x]: box.additionalRegisters[x].serializedValue };
+        })
+      ),
       confirmed: options.asConfirmed
     } as ErgoBox;
   };
