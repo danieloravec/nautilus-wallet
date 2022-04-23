@@ -1,7 +1,7 @@
 import { asDict } from "@/utils/serializer";
 import BigNumber from "bignumber.js";
 import { isEmpty } from "lodash";
-import { ErgoBox, Token } from "./connector";
+import { ErgoBox, Registers, Token } from "./connector";
 import { AssetStandard } from "./internal";
 
 type Amount = number | string | BigNumber;
@@ -9,6 +9,11 @@ type Amount = number | string | BigNumber;
 export type AddressApiResponse<T> = {
   address: string;
   data: T;
+};
+
+export type ExplorerPage<T> = {
+  items: T[];
+  total: number;
 };
 
 export type ExplorerToken = {
@@ -121,6 +126,20 @@ export type ExplorerBox = {
   mainChain: boolean;
 };
 
+export type ExplorerBoxV0 = {
+  id: string;
+  txId: string;
+  value: number | string | BigNumber;
+  index: number;
+  creationHeight: number;
+  ergoTree: string;
+  address: string;
+  assets: ExplorerToken[];
+  additionalRegisters: Registers;
+  spentTransactionId?: string;
+  mainChain: boolean;
+};
+
 export type ExplorerTransaction = {
   id: string;
   blockId: string;
@@ -133,11 +152,6 @@ export type ExplorerTransaction = {
   dataInputs: string[];
   outputs: ExplorerBox[];
   size: number;
-};
-
-export type ExplorerTxHistoryResponse = {
-  items: ExplorerTransaction[];
-  total: number;
 };
 
 export function explorerBoxMapper(options: { asConfirmed: boolean }) {

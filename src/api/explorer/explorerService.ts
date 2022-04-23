@@ -6,7 +6,9 @@ import {
   ExplorerBox,
   ExplorerSubmitTxResponse,
   ExplorerAddressBalanceResponse,
-  ExplorerTxHistoryResponse
+  ExplorerPage,
+  ExplorerTransaction,
+  ExplorerBoxV0
 } from "@/types/explorer";
 import axios from "axios";
 import axiosRetry from "axios-retry";
@@ -32,15 +34,12 @@ class ExplorerService {
       limit?: number;
       concise?: boolean;
     }
-  ): Promise<AddressApiResponse<ExplorerTxHistoryResponse>> {
+  ): Promise<AddressApiResponse<ExplorerPage<ExplorerTransaction>>> {
     const response = await axios.get(`${API_URL}/api/v1/addresses/${address}/transactions`, {
       params
     });
 
-    return {
-      address,
-      data: response.data as ExplorerTxHistoryResponse
-    };
+    return { address, data: response.data };
   }
 
   public async getAddressBalance(
@@ -155,7 +154,7 @@ class ExplorerService {
 
   private async getAddressUnspentBoxes(
     address: string
-  ): Promise<AddressApiResponse<ExplorerBox[]>> {
+  ): Promise<AddressApiResponse<ExplorerPage<ExplorerBox>>> {
     const response = await axios.get(`${API_URL}/api/v1/boxes/unspent/byAddress/${address}`);
 
     return { address, data: response.data };
@@ -166,7 +165,7 @@ class ExplorerService {
     return response.data;
   }
 
-  public async getMintingBox(tokenId: string): Promise<ExplorerBox> {
+  public async getMintingBox(tokenId: string): Promise<ExplorerBoxV0> {
     const response = await axios.get(`${API_URL}/api/v0/assets/${tokenId}/issuingBox`);
     return response.data[0];
   }
@@ -175,7 +174,9 @@ class ExplorerService {
     return await Promise.all(boxIds.map((id) => this.getBox(id)));
   }
 
-  public async getUnspentBoxes(addresses: string[]): Promise<AddressApiResponse<ExplorerBox[]>[]> {
+  public async getUnspentBoxes(
+    addresses: string[]
+  ): Promise<AddressApiResponse<ExplorerPage<ExplorerBox>>[]> {
     return await Promise.all(addresses.map((a) => this.getAddressUnspentBoxes(a)));
   }
 
