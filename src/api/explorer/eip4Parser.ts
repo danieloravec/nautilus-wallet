@@ -1,10 +1,10 @@
 import { IAssetInfo } from "@/types/database";
-import { ExplorerBoxV0 } from "@/types/explorer";
+import { ExplorerV0Box } from "@/types/explorer";
 import { AssetStandard, AssetSubtype, AssetType } from "@/types/internal";
 import { find, isEmpty } from "lodash";
 import { decodeColl, decodeCollTuple, isColl, isTuple } from "../ergo/sigmaSerializer";
 
-export function parseEIP4Asset(tokenId: string, box: ExplorerBoxV0): IAssetInfo | undefined {
+export function parseEIP4Asset(tokenId: string, box: ExplorerV0Box): IAssetInfo | undefined {
   const boxAsset = find(box.assets, (a) => a.tokenId === tokenId);
   if (!boxAsset) {
     return;

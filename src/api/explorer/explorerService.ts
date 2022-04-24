@@ -8,7 +8,7 @@ import {
   ExplorerAddressBalanceResponse,
   ExplorerPage,
   ExplorerTransaction,
-  ExplorerBoxV0,
+  ExplorerV0Box,
   PaginationParams
 } from "@/types/explorer";
 import axios from "axios";
@@ -173,7 +173,7 @@ class ExplorerService {
     return response.data;
   }
 
-  public async getMintingBox(tokenId: string): Promise<ExplorerBoxV0> {
+  public async getMintingBox(tokenId: string): Promise<ExplorerV0Box> {
     const response = await axios.get(`${API_URL}/api/v0/assets/${tokenId}/issuingBox`);
     return response.data[0];
   }

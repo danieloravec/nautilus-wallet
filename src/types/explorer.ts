@@ -130,7 +130,7 @@ export type ExplorerBox = {
   mainChain: boolean;
 };
 
-export type ExplorerBoxV0 = {
+export type ExplorerV0Box = {
   id: string;
   txId: string;
   value: number | string | BigNumber;
