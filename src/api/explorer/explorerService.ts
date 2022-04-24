@@ -8,7 +8,8 @@ import {
   ExplorerAddressBalanceResponse,
   ExplorerPage,
   ExplorerTransaction,
-  ExplorerBoxV0
+  ExplorerBoxV0,
+  PaginationParams
 } from "@/types/explorer";
 import axios from "axios";
 import axiosRetry from "axios-retry";
@@ -152,12 +153,19 @@ class ExplorerService {
     return used;
   }
 
-  private async getAddressUnspentBoxes(
-    address: string
-  ): Promise<AddressApiResponse<ExplorerPage<ExplorerBox>>> {
-    const response = await axios.get(`${API_URL}/api/v1/boxes/unspent/byAddress/${address}`);
+  private async getUnspentBoxesByAddress(
+    address: string,
+    params?: {
+      offset?: number;
+      limit?: number;
+      sortDirection?: "asc" | "desc";
+    }
+  ): Promise<ExplorerPage<ExplorerBox>> {
+    const response = await axios.get(`${API_URL}/api/v1/boxes/unspent/byAddress/${address}`, {
+      params
+    });
 
-    return { address, data: response.data };
+    return response.data;
   }
 
   public async getBox(boxId: string): Promise<ExplorerBox> {
@@ -174,10 +182,38 @@ class ExplorerService {
     return await Promise.all(boxIds.map((id) => this.getBox(id)));
   }
 
-  public async getUnspentBoxes(
-    addresses: string[]
-  ): Promise<AddressApiResponse<ExplorerPage<ExplorerBox>>[]> {
-    return await Promise.all(addresses.map((a) => this.getAddressUnspentBoxes(a)));
+  private async paginate<T>(
+    endpoint: (params: PaginationParams) => Promise<ExplorerPage<T>>,
+    params: PaginationParams,
+    acc?: T[]
+  ): Promise<T[]> {
+    const response = await endpoint(params);
+    const newAcc = acc ? acc.concat(response.items) : response.items;
+    if (newAcc.length >= response.total) {
+      return newAcc;
+    }
+
+    return await this.paginate(
+      endpoint,
+      {
+        offset: params.offset + params.limit,
+        limit: params.limit
+      },
+      newAcc
+    );
+  }
+
+  public async getUnspentBoxesByAddresses(addresses: string[]): Promise<ExplorerBox[]> {
+    const repsonse = await Promise.all(
+      addresses.map((a) =>
+        this.paginate((params: PaginationParams) => this.getUnspentBoxesByAddress(a, params), {
+          offset: 0,
+          limit: 500
+        })
+      )
+    );
+
+    return repsonse.flat();
   }
 
   public async getAssetInfo(tokenId: string): Promise<IAssetInfo | undefined> {

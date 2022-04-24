@@ -1,6 +1,5 @@
 import { asDict } from "@/utils/serializer";
 import BigNumber from "bignumber.js";
-import { isEmpty } from "lodash";
 import { ErgoBox, Registers, Token } from "./connector";
 import { AssetStandard } from "./internal";
 
@@ -14,6 +13,11 @@ export type AddressApiResponse<T> = {
 export type ExplorerPage<T> = {
   items: T[];
   total: number;
+};
+
+export type PaginationParams = {
+  offset: number;
+  limit: number;
 };
 
 export type ExplorerToken = {

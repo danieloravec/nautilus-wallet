@@ -8,7 +8,7 @@ import {
   WalletSettings,
   WalletType
 } from "@/types/internal";
-import { ErgoBox, Token } from "./connector";
+import { ErgoBox } from "./connector";
 
 export interface IDbWallet {
   id?: number;
@@ -76,6 +76,7 @@ export interface ITransaction {
   height: number;
   timeStamp: Date;
   state: TransactionState;
+  attachments?: string;
   fee: AssetAmount;
   sent: AssetAmount[];
   received: AssetAmount[];
