@@ -52,7 +52,7 @@ async function fetchBoxesFromExplorer(addresses: string[]): Promise<ErgoBox[]> {
     return [];
   }
 
-  const boxes = await explorerService.getUnspentBoxesByAddresses(addresses);
+  const boxes = await explorerService.getAllUnspentBoxesByAddresses(addresses);
   return boxes.map(explorerBoxMapper({ asConfirmed: true }));
 }
 

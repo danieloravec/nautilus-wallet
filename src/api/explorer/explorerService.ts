@@ -6,10 +6,11 @@ import {
   ExplorerBox,
   ExplorerSubmitTxResponse,
   ExplorerAddressBalanceResponse,
-  ExplorerPage,
+  IExplorerPage,
   ExplorerTransaction,
   ExplorerV0Box,
-  PaginationParams
+  PaginationParams,
+  IAddressExplorerPage
 } from "@/types/explorer";
 import axios from "axios";
 import axiosRetry from "axios-retry";
@@ -23,6 +24,7 @@ import { ERG_DECIMALS, ERG_TOKEN_ID } from "@/constants/ergo";
 import { AssetStandard } from "@/types/internal";
 import { parseEIP4Asset } from "./eip4Parser";
 import { IAssetInfo } from "@/types/database";
+import { Transaction } from "@coinbarn/ergo-ts";
 
 const explorerTokenMarket = new ExplorerTokenMarket({ explorerUri: API_URL });
 axiosRetry(axios, { retries: 3, retryDelay: axiosRetry.exponentialDelay });
@@ -35,13 +37,26 @@ class ExplorerService {
       limit?: number;
       concise?: boolean;
     }
-  ): Promise<AddressApiResponse<ExplorerPage<ExplorerTransaction>>> {
+  ): Promise<IAddressExplorerPage<ExplorerTransaction>> {
     const response = await axios.get(`${API_URL}/api/v1/addresses/${address}/transactions`, {
       params
     });
 
-    return { address, data: response.data };
+    return { address, ...response.data };
   }
+
+  // public async getFullTxHistory(addresses: string[]): Promise<ExplorerBox[]> {
+  //   const repsonse = await Promise.all(
+  //     addresses.map((a) =>
+  //       this.paginate((params: PaginationParams) => this.getTxHistory(a, params), {
+  //         offset: 0,
+  //         limit: 500
+  //       })
+  //     )
+  //   );
+
+  //   return repsonse.flat();
+  // }
 
   public async getAddressBalance(
     address: string
@@ -125,47 +140,52 @@ class ExplorerService {
 
   public async getUsedAddresses(addresses: string[], options = { chunkBy: 20 }): Promise<string[]> {
     if (options.chunkBy <= 0 || options.chunkBy >= addresses.length) {
-      return this.getUsedAddressesFromChunk(addresses);
+      return this._getUsedAddressesFromChunk(addresses);
     }
 
     const chunks = chunk(addresses, options.chunkBy);
     let used: string[] = [];
     for (const c of chunks) {
-      used = used.concat(await this.getUsedAddressesFromChunk(c));
+      used = used.concat(await this._getUsedAddressesFromChunk(c));
     }
 
     return used;
   }
 
-  private async getUsedAddressesFromChunk(addresses: string[]): Promise<string[]> {
-    const resp = await Promise.all(
+  private async _getUsedAddressesFromChunk(addresses: string[]): Promise<string[]> {
+    const response = await Promise.all(
       addresses.map((address) => this.getTxHistory(address, { limit: 1, concise: true }))
     );
 
-    const usedRaw = resp.filter((r) => r.data.total > 0);
-    const used: string[] = [];
-    for (const addr of addresses) {
-      if (find(usedRaw, (x) => addr === x.address)) {
-        used.push(addr);
-      }
-    }
-
-    return used;
+    return response.filter((r) => r.total > 0).map((r) => r.address);
   }
 
-  private async getUnspentBoxesByAddress(
+  private async _getUnspentBoxesByAddress(
     address: string,
     params?: {
       offset?: number;
       limit?: number;
       sortDirection?: "asc" | "desc";
     }
-  ): Promise<ExplorerPage<ExplorerBox>> {
+  ): Promise<IExplorerPage<ExplorerBox>> {
     const response = await axios.get(`${API_URL}/api/v1/boxes/unspent/byAddress/${address}`, {
       params
     });
 
     return response.data;
+  }
+
+  public async getAllUnspentBoxesByAddresses(addresses: string[]): Promise<ExplorerBox[]> {
+    const repsonse = await Promise.all(
+      addresses.map((a) =>
+        this.paginate((params: PaginationParams) => this._getUnspentBoxesByAddress(a, params), {
+          offset: 0,
+          limit: 500
+        })
+      )
+    );
+
+    return repsonse.flat();
   }
 
   public async getBox(boxId: string): Promise<ExplorerBox> {
@@ -183,7 +203,7 @@ class ExplorerService {
   }
 
   private async paginate<T>(
-    endpoint: (params: PaginationParams) => Promise<ExplorerPage<T>>,
+    endpoint: (params: PaginationParams) => Promise<IExplorerPage<T>>,
     params: PaginationParams,
     acc?: T[]
   ): Promise<T[]> {
@@ -201,19 +221,6 @@ class ExplorerService {
       },
       newAcc
     );
-  }
-
-  public async getUnspentBoxesByAddresses(addresses: string[]): Promise<ExplorerBox[]> {
-    const repsonse = await Promise.all(
-      addresses.map((a) =>
-        this.paginate((params: PaginationParams) => this.getUnspentBoxesByAddress(a, params), {
-          offset: 0,
-          limit: 500
-        })
-      )
-    );
-
-    return repsonse.flat();
   }
 
   public async getAssetInfo(tokenId: string): Promise<IAssetInfo | undefined> {

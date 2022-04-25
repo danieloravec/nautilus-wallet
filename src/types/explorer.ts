@@ -10,10 +10,14 @@ export type AddressApiResponse<T> = {
   data: T;
 };
 
-export type ExplorerPage<T> = {
+export interface IExplorerPage<T> {
   items: T[];
   total: number;
-};
+}
+
+export interface IAddressExplorerPage<T> extends IExplorerPage<T> {
+  address: string;
+}
 
 export type PaginationParams = {
   offset: number;
