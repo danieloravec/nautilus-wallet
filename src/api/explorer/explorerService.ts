@@ -6,11 +6,11 @@ import {
   ExplorerBox,
   ExplorerSubmitTxResponse,
   ExplorerAddressBalanceResponse,
-  IExplorerPage,
+  ExplorerPage,
   ExplorerTransaction,
   ExplorerV0Box,
   PaginationParams,
-  IAddressExplorerPage
+  AddressExplorerPage
 } from "@/types/explorer";
 import axios from "axios";
 import axiosRetry from "axios-retry";
@@ -37,7 +37,7 @@ class ExplorerService {
       limit?: number;
       concise?: boolean;
     }
-  ): Promise<IAddressExplorerPage<ExplorerTransaction>> {
+  ): Promise<AddressExplorerPage<ExplorerTransaction>> {
     const response = await axios.get(`${API_URL}/api/v1/addresses/${address}/transactions`, {
       params
     });
@@ -167,7 +167,7 @@ class ExplorerService {
       limit?: number;
       sortDirection?: "asc" | "desc";
     }
-  ): Promise<IExplorerPage<ExplorerBox>> {
+  ): Promise<ExplorerPage<ExplorerBox>> {
     const response = await axios.get(`${API_URL}/api/v1/boxes/unspent/byAddress/${address}`, {
       params
     });
@@ -203,7 +203,7 @@ class ExplorerService {
   }
 
   private async paginate<T>(
-    endpoint: (params: PaginationParams) => Promise<IExplorerPage<T>>,
+    endpoint: (params: PaginationParams) => Promise<ExplorerPage<T>>,
     params: PaginationParams,
     acc?: T[]
   ): Promise<T[]> {
