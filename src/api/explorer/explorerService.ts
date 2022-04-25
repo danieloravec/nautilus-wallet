@@ -45,18 +45,18 @@ class ExplorerService {
     return { address, ...response.data };
   }
 
-  // public async getFullTxHistory(addresses: string[]): Promise<ExplorerBox[]> {
-  //   const repsonse = await Promise.all(
-  //     addresses.map((a) =>
-  //       this.paginate((params: PaginationParams) => this.getTxHistory(a, params), {
-  //         offset: 0,
-  //         limit: 500
-  //       })
-  //     )
-  //   );
+  public async getFullTxHistory(addresses: string[]): Promise<ExplorerTransaction[]> {
+    const repsonse = await Promise.all(
+      addresses.map((a) =>
+        this.paginate((params: PaginationParams) => this.getTxHistory(a, params), {
+          offset: 0,
+          limit: 500
+        })
+      )
+    );
 
-  //   return repsonse.flat();
-  // }
+    return repsonse.flat();
+  }
 
   public async getAddressBalance(
     address: string
