@@ -35,6 +35,28 @@ describe("sigma serializer", () => {
     ]);
   });
 
+  it("EIP-29 benjamin example decode Coll[Byte] tuple as string", () => {
+    expect(
+      decodeCollTuple("3c0e400e0350525004196772656574696e677320746f206361707461696e206e656d6f")
+    ).toEqual(["PRP", "greetings to captain nemo"]);
+  });
+
+  it("EIP-29 examples decode Coll[Byte] tuple as string", () => {
+    expect(decodeCollTuple("3c0e0e0350525011596f7572206c6f616e204a616e75617279")).toEqual([
+      "PRP", // magic bytes encoded as string should fix it
+      "Your loan January"
+    ]);
+
+    expect(decodeCollTuple("3c0e0e035052500d4f72646572204e465420233332")).toEqual([
+      "PRP",
+      "Order NFT #32"
+    ]);
+
+    expect(
+      decodeCollTuple("3c0e0e0350525019e29c88efb88f205469636b6574204f6365616e696320383437")
+    ).toEqual(["PRP", "✈️ Ticket Oceanic 847"]);
+  });
+
   it("decode Coll[Byte] as hex string", () => {
     expect(decodeColl("0e020101", "hex")).toEqual("0101");
     expect(decodeColl("0e020102", "hex")).toEqual("0102");
