@@ -8,6 +8,7 @@ import {
 } from "@/constants/ergo";
 import { Registers } from "@/types/connector";
 import { wasmModule } from "@/utils/wasm-module";
+import { mdiExitRun } from "@mdi/js";
 import { isEmpty } from "lodash";
 
 export function isColl(input: string): boolean {
@@ -100,6 +101,23 @@ export function extractPksFromRegisters(registers: Registers): string[] {
   }
 
   return pks;
+}
+
+const EIP29_MAGIC_BYTES = "3c0e0e0350525";
+export function isEIP29Attachment(register: string): boolean {
+  if (!register || !register.startsWith(EIP29_MAGIC_BYTES)) {
+    return false;
+  }
+
+  return true;
+}
+
+export function parseEIP29Attachment(register: string): string | undefined {
+  if (!isEIP29Attachment(register)) {
+    return;
+  }
+
+  const raw = register.slice(EIP29_MAGIC_BYTES.length);
 }
 
 export function extractPksFromP2SErgoTree(ergoTree: string): string[] {
