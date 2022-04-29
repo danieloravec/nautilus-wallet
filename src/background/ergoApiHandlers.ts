@@ -61,8 +61,8 @@ export async function handleGetBoxesRequest(
         if (acc.isGreaterThanOrEqualTo(amount)) {
           return false;
         }
-        acc = acc.plus(toBigNumber(box.value)!);
 
+        acc = acc.plus(toBigNumber(box.value)!);
         return true;
       });
     } else {
@@ -70,8 +70,8 @@ export async function handleGetBoxesRequest(
         if (acc.isGreaterThanOrEqualTo(amount)) {
           return false;
         }
-        acc = acc.plus(toBigNumber(find(box.assets, (a) => a.tokenId === tokenId)?.amount ?? 0)!);
 
+        acc = acc.plus(toBigNumber(find(box.assets, (a) => a.tokenId === tokenId)?.amount ?? 0)!);
         return true;
       });
     }
