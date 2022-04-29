@@ -78,7 +78,7 @@ class NautilusDb extends Dexie {
       });
 
     this.version(7).stores({
-      transactions: "&id, type, height, state"
+      transactions: "&id, type, height, state, walletId"
     });
   }
 }
