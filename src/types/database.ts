@@ -76,7 +76,7 @@ export interface ITransaction {
   height: number;
   timeStamp: Date;
   state: TransactionState;
-  attachments?: string;
+  attachments: string[];
   fee: AssetAmount;
   sent: AssetAmount[];
   received: AssetAmount[];

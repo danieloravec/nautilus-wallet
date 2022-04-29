@@ -1,9 +1,6 @@
 import { IDbAsset } from "@/types/database";
 import { dbContext } from "@/api/database/dbContext";
 import { differenceBy, find, groupBy, isEmpty, keys, union } from "lodash";
-import { AddressApiResponse, ExplorerAddressBalanceResponse } from "@/types/explorer";
-import { ERG_TOKEN_ID } from "@/constants/ergo";
-import { isZero } from "@/utils/bigNumbers";
 
 class assetsDbService {
   public async getByTokenId(walletId: number, tokenId: string): Promise<IDbAsset[]> {

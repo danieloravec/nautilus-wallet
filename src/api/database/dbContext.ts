@@ -5,7 +5,8 @@ import {
   IDbAsset,
   IDbWallet,
   IDbUTxO,
-  IAssetInfo
+  IAssetInfo,
+  ITransaction
 } from "@/types/database";
 import { uniqBy } from "lodash";
 import { ERG_TOKEN_ID, UNKNOWN_MINTING_BOX_ID } from "@/constants/ergo";
@@ -17,6 +18,7 @@ class NautilusDb extends Dexie {
   connectedDApps!: Table<IDbDAppConnection, string>;
   utxos!: Table<IDbUTxO, string>;
   assetInfo!: Table<IAssetInfo, string>;
+  transactions!: Table<ITransaction, string>;
 
   constructor() {
     super("nautilusDb");
@@ -76,7 +78,7 @@ class NautilusDb extends Dexie {
       });
 
     this.version(7).stores({
-      transactions: "&id, type, height, timeStamp, state"
+      transactions: "&id, type, height, state"
     });
   }
 }
