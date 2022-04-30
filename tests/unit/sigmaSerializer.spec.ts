@@ -1,6 +1,7 @@
 import {
   decodeColl,
   decodeCollTuple,
+  decodeTuple,
   extractPksFromRegisters
 } from "../../src/api/ergo/sigmaSerializer";
 
@@ -34,11 +35,18 @@ describe("sigma serializer", () => {
       "ipfs://bafkreigzktykbpkbpknofphvmae2z2bwzqdg3artn26nnxr7akal7lnm2m"
     ]);
   });
+  const COLL = "0e";
+  const INT = "40";
 
-  it("EIP-29 benjamin example decode Coll[Byte] tuple as string", () => {
+  it("EIP-29 - Benjamin's example - decode (Coll, Int, Coll) tuple", () => {
     expect(
-      decodeCollTuple("3c0e400e0350525004196772656574696e677320746f206361707461696e206e656d6f")
-    ).toEqual(["PRP", "greetings to captain nemo"]);
+      decodeTuple(
+        "3c0e400e0350525004196772656574696e677320746f206361707461696e206e656d6f",
+        { [COLL]: "hex" },
+        { [INT]: "utf-8" },
+        { [COLL]: "utf-8" }
+      )
+    ).toEqual(["505250", "4", "greetings to captain nemo"]);
   });
 
   it("EIP-29 examples decode Coll[Byte] tuple as string", () => {

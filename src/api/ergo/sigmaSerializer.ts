@@ -75,6 +75,59 @@ export function decodeCollTuple(
   return indexes.map((index) => decodeConst(input, index, encoding));
 }
 
+export function decodeTuple(
+  input: string,
+  ...types: { [type: string]: BufferEncoding }[]
+): (string | undefined)[] {
+  if (!isTuple(input)) {
+    return [];
+  }
+  const typeKeys = types.flatMap((x) => Object.keys(x));
+  const indexes: number[] = [];
+  let cursor = TUPLE_PREFIX.length;
+  let readNext = true;
+  let count = 0;
+  do {
+    const type = typeKeys[count];
+    readNext = input.startsWith(type, cursor);
+    if (readNext) {
+      cursor += type.length;
+    }
+    count++;
+  } while (readNext);
+
+  const output: string[] = [];
+  let index, length!: number | undefined;
+  count = 0;
+  do {
+    const type = typeKeys[count];
+    //int
+    if (type === "40") {
+      index = cursor;
+      length = 2;
+      // console.log(vlq(input, index));
+      output.push(vlq(input, index)?.toString() ?? "");
+      // console.log(input.slice(index, index + length));
+    } else {
+      [index, length] = getCollSpan(input, cursor);
+      if (length) {
+        output.push(
+          Buffer.from(input.slice(index, index + length), "hex").toString(
+            types[count][type] ?? "utf-8"
+          )
+        );
+      }
+    }
+    if (length) {
+      indexes.push(cursor);
+      cursor = index + length;
+    }
+    count++;
+  } while (length);
+
+  return output;
+}
+
 function decodeVlq(input: string, position: number): [cursor: number, value: number | undefined] {
   let len = 0;
   let readNext = true;
@@ -89,6 +142,22 @@ function decodeVlq(input: string, position: number): [cursor: number, value: num
   } while (readNext);
 
   return [position, len * 2];
+}
+
+function vlq(input: string, position: number): number | undefined {
+  let len = 0;
+  let readNext = true;
+  do {
+    const lenChunk = parseInt(input.slice(position, (position += 2)), 16);
+    if (isNaN(lenChunk)) {
+      return;
+    }
+
+    readNext = (lenChunk & 0x80) !== 0;
+    len = 128 * len + (lenChunk & 0x7f);
+  } while (readNext);
+
+  return len;
 }
 
 export function extractPksFromRegisters(registers: Registers): string[] {
