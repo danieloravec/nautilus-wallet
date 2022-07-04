@@ -10,6 +10,7 @@ import DropDown from "@/components/DropDown.vue";
 import LoadingIndicator from "@/components/LoadingIndicator.vue";
 import WalletItem from "@/components/WalletItem.vue";
 import DAppPlate from "@/components/DappPlate.vue";
+import LedgerDevice from "@/components/LedgerDevice.vue";
 import MdiIcon from "@/components/MdiIcon.vue";
 import AssetIcon from "@/components/AssetIcon.vue";
 import { filters } from "@/utils/globalFilters";
@@ -17,7 +18,16 @@ import { Inputitems, Modal, Slider, Switch, Config } from "@oruga-ui/oruga-next"
 import { vueCleave } from "@/directives/cleave";
 import { rpcHandler } from "@/background/rpcHandler";
 import mdiVue from "mdi-vue/v3";
-import { mdiIncognito, mdiFilter, mdiFilterOff, mdiAlertCircleOutline, mdiClose } from "@mdi/js";
+import {
+  mdiIncognito,
+  mdiFilter,
+  mdiFilterOff,
+  mdiAlertCircleOutline,
+  mdiClose,
+  mdiWalletPlus,
+  mdiWalletOutline,
+  mdiBackupRestore
+} from "@mdi/js";
 import { hasBrowserContext } from "./utils/browserApi";
 
 import "@/config/axiosConfig";
@@ -41,7 +51,10 @@ const mdiSettings = {
     mdiFilter,
     mdiFilterOff,
     mdiAlertCircleOutline,
-    mdiClose
+    mdiClose,
+    mdiWalletPlus,
+    mdiWalletOutline,
+    mdiBackupRestore
   }
 };
 
@@ -70,6 +83,7 @@ app
   .component("drop-down", DropDown)
   .component("loading-indicator", LoadingIndicator)
   .component("wallet-item", WalletItem)
+  .component("ledger-device", LedgerDevice)
   .component("dapp-plate", DAppPlate)
   .component("mdi-icon", MdiIcon)
   .component("asset-icon", AssetIcon)

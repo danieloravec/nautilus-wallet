@@ -5,7 +5,7 @@
     </div>
     <div
       v-if="$route.meta.fullPage || $route.query.auth === 'true'"
-      class="flex flex-row p-4 gap-4 items-center justify-between bg-gray-100"
+      class="flex flex-row p-4 gap-4 items-center justify-between bg-gray-100 border-b-1 border-gray-200"
     >
       <img src="/icons/app/logo.svg" class="w-11 ml-2" />
       <h1 class="text-base font-semibold w-full">
@@ -33,20 +33,12 @@ import { PRICE_FETCH_INTERVAL, REFRESH_BALANCE_INTERVAL } from "./constants/inte
 import { mapActions, mapState } from "vuex";
 import { ACTIONS } from "./constants/store/actions";
 import KyaModal from "./components/KYAModal.vue";
-import { hasBrowserContext, Browser } from "./utils/browserApi";
+import { isPopup } from "./utils/browserApi";
 import { MAINNET } from "./constants/ergo";
 
 function runSetInterval(callback: () => void, ms: number): NodeJS.Timer {
   callback();
   return setInterval(callback, ms);
-}
-
-function isPopup() {
-  if (!hasBrowserContext() || !Browser.extension) {
-    return false;
-  }
-
-  return Browser.extension.getViews({ type: "popup" })[0] === self;
 }
 
 export default defineComponent({
