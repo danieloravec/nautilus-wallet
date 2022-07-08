@@ -101,10 +101,11 @@ export function decodeTuple(input: string, ...types: TupleTypes[]): string[] {
         if (type === "hex") {
           output.push(input.slice(index, index + length));
         } else if (type === "utf-8") {
-          output.push(Buffer.from(input.slice(index, index + length), "hex").toString(type));
+          output.push(Buffer.from(input.slice(index, index + length), "hex").toString("utf-8"));
         }
       }
     }
+
     if (length) {
       cursor = index + length;
     }
