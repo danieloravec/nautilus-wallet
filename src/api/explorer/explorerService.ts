@@ -16,7 +16,7 @@ import {
 } from "@/types/explorer";
 import axios from "axios";
 import axiosRetry from "axios-retry";
-import { chunk, find, isEmpty, uniqWith } from "lodash";
+import { chunk, isEmpty, uniqWith } from "lodash";
 import JSONBig from "json-bigint";
 import { ErgoTx } from "@/types/connector";
 import { asDict } from "@/utils/serializer";

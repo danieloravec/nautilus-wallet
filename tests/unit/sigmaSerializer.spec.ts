@@ -35,34 +35,27 @@ describe("sigma serializer", () => {
       "ipfs://bafkreigzktykbpkbpknofphvmae2z2bwzqdg3artn26nnxr7akal7lnm2m"
     ]);
   });
-  const COLL = "0e";
-  const INT = "40";
 
-  it("EIP-29 - Benjamin's example - decode (Coll, Int, Coll) tuple", () => {
+  it("EIP-29 - decode a (Coll[Bytes], Int, Coll[Bytes]) tuple", () => {
+    const magicBytes = "505250";
+    const plainTextType = "2";
+
     expect(
       decodeTuple(
         "3c0e400e0350525004196772656574696e677320746f206361707461696e206e656d6f",
-        { [COLL]: "hex" },
-        { [INT]: "utf-8" },
-        { [COLL]: "utf-8" }
+        "hex",
+        "int",
+        "utf-8"
       )
-    ).toEqual(["505250", "4", "greetings to captain nemo"]);
-  });
-
-  it("EIP-29 examples decode Coll[Byte] tuple as string", () => {
-    expect(decodeCollTuple("3c0e0e0350525011596f7572206c6f616e204a616e75617279")).toEqual([
-      "PRP", // magic bytes encoded as string should fix it
-      "Your loan January"
-    ]);
-
-    expect(decodeCollTuple("3c0e0e035052500d4f72646572204e465420233332")).toEqual([
-      "PRP",
-      "Order NFT #32"
-    ]);
+    ).toEqual([magicBytes, plainTextType, "greetings to captain nemo"]);
 
     expect(
-      decodeCollTuple("3c0e0e0350525019e29c88efb88f205469636b6574204f6365616e696320383437")
-    ).toEqual(["PRP", "✈️ Ticket Oceanic 847"]);
+      decodeTuple("3c0e400e035052500411596f7572206c6f616e204a616e75617279", "hex", "int", "utf-8")
+    ).toEqual([magicBytes, plainTextType, "Your loan January"]);
+
+    expect(
+      decodeTuple("3c0e400e03505250040d4f72646572204e465420233332", "hex", "int", "utf-8")
+    ).toEqual([magicBytes, plainTextType, "Order NFT #32"]);
   });
 
   it("decode Coll[Byte] as hex string", () => {

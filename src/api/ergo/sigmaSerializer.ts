@@ -8,7 +8,6 @@ import {
 } from "@/constants/ergo";
 import { Registers } from "@/types/connector";
 import { wasmModule } from "@/utils/wasm-module";
-import { mdiExitRun } from "@mdi/js";
 import { isEmpty } from "lodash";
 
 export function isColl(input: string): boolean {
@@ -40,8 +39,9 @@ function decodeConst(
   return Buffer.from(input.slice(start, start + length), "hex").toString(encoding);
 }
 
-function getCollSpan(input: string, start: number): [start: number, length: number | undefined] {
-  return decodeVlq(input, start);
+function getCollSpan(input: string, start: number): [start: number, length: number] {
+  const [cursor, value] = decodeVlq(input, start);
+  return [cursor, value * 2];
 }
 
 export function decodeCollTuple(
@@ -75,51 +75,32 @@ export function decodeCollTuple(
   return indexes.map((index) => decodeConst(input, index, encoding));
 }
 
-export function decodeTuple(
-  input: string,
-  ...types: { [type: string]: BufferEncoding }[]
-): (string | undefined)[] {
+type TupleTypes = "int" | "utf-8" | "hex";
+
+export function decodeTuple(input: string, ...types: TupleTypes[]): string[] {
   if (!isTuple(input)) {
     return [];
   }
-  const typeKeys = types.flatMap((x) => Object.keys(x));
-  const indexes: number[] = [];
-  let cursor = TUPLE_PREFIX.length;
-  let readNext = true;
-  let count = 0;
-  do {
-    const type = typeKeys[count];
-    readNext = input.startsWith(type, cursor);
-    if (readNext) {
-      cursor += type.length;
-    }
-    count++;
-  } while (readNext);
 
   const output: string[] = [];
-  let index, length!: number | undefined;
-  count = 0;
+  let cursor = TUPLE_PREFIX.length + types.length * 2;
+  let length!: number | undefined;
+  let index = 0;
+  let count = 0;
+
   do {
-    const type = typeKeys[count];
-    //int
-    if (type === "40") {
-      index = cursor;
-      length = 2;
-      // console.log(vlq(input, index));
-      output.push(vlq(input, index)?.toString() ?? "");
-      // console.log(input.slice(index, index + length));
+    const type = types[count];
+    if (type === "int") {
+      const [valCursor, value] = decodeVlq(input, cursor);
+      output.push(decodeZigZag64(value).toString());
+      length = valCursor - index;
     } else {
       [index, length] = getCollSpan(input, cursor);
       if (length) {
-        output.push(
-          Buffer.from(input.slice(index, index + length), "hex").toString(
-            types[count][type] ?? "utf-8"
-          )
-        );
+        output.push(Buffer.from(input.slice(index, index + length), "hex").toString(type));
       }
     }
     if (length) {
-      indexes.push(cursor);
       cursor = index + length;
     }
     count++;
@@ -128,36 +109,25 @@ export function decodeTuple(
   return output;
 }
 
-function decodeVlq(input: string, position: number): [cursor: number, value: number | undefined] {
-  let len = 0;
+function decodeVlq(input: string, position: number): [cursor: number, value: number] {
+  let value = 0;
   let readNext = true;
+
   do {
     const lenChunk = parseInt(input.slice(position, (position += 2)), 16);
     if (isNaN(lenChunk)) {
-      return [position, undefined];
+      return [position, 0];
     }
 
     readNext = (lenChunk & 0x80) !== 0;
-    len = 128 * len + (lenChunk & 0x7f);
+    value = 128 * value + (lenChunk & 0x7f);
   } while (readNext);
 
-  return [position, len * 2];
+  return [position, value];
 }
 
-function vlq(input: string, position: number): number | undefined {
-  let len = 0;
-  let readNext = true;
-  do {
-    const lenChunk = parseInt(input.slice(position, (position += 2)), 16);
-    if (isNaN(lenChunk)) {
-      return;
-    }
-
-    readNext = (lenChunk & 0x80) !== 0;
-    len = 128 * len + (lenChunk & 0x7f);
-  } while (readNext);
-
-  return len;
+function decodeZigZag64(input: number) {
+  return (input >> 1) ^ (input << 63);
 }
 
 export function extractPksFromRegisters(registers: Registers): string[] {
@@ -172,21 +142,13 @@ export function extractPksFromRegisters(registers: Registers): string[] {
   return pks;
 }
 
-const EIP29_MAGIC_BYTES = "3c0e0e0350525";
+const EIP29_MAGIC_BYTES = "3c0e400e03505250";
 export function isEIP29Attachment(register: string): boolean {
   if (!register || !register.startsWith(EIP29_MAGIC_BYTES)) {
     return false;
   }
 
   return true;
-}
-
-export function parseEIP29Attachment(register: string): string | undefined {
-  if (!isEIP29Attachment(register)) {
-    return;
-  }
-
-  const raw = register.slice(EIP29_MAGIC_BYTES.length);
 }
 
 export function extractPksFromP2SErgoTree(ergoTree: string): string[] {
