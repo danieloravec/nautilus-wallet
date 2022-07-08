@@ -96,8 +96,13 @@ export function decodeTuple(input: string, ...types: TupleTypes[]): string[] {
       length = valCursor - index;
     } else {
       [index, length] = getCollSpan(input, cursor);
+
       if (length) {
-        output.push(Buffer.from(input.slice(index, index + length), "hex").toString(type));
+        if (type === "hex") {
+          output.push(input.slice(index, index + length));
+        } else if (type === "utf-8") {
+          output.push(Buffer.from(input.slice(index, index + length), "hex").toString(type));
+        }
       }
     }
     if (length) {
