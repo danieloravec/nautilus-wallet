@@ -36,7 +36,15 @@ export const filters = {
       return `${val.slice(0, maxLength - ellipsis.length + 1).trimEnd()}${ellipsis}`;
     }
   },
-  formatBigNumber(value: BigNumber, decimalPlaces?: number, shortThreshold = 1_000_000) {
+  formatBigNumber(
+    value?: BigNumber | BigNumber.Instance,
+    decimalPlaces?: number,
+    shortThreshold = 1_000_000
+  ) {
+    if (!value) {
+      return "";
+    }
+
     if (value.isGreaterThanOrEqualTo(shortThreshold)) {
       return defaultBigNumbersFormatter.format(value.toNumber());
     }
@@ -50,11 +58,11 @@ export const filters = {
       return new BigNumber(0);
     }
 
-    let d = Math.ceil(Math.log10(num < 0 ? -num : num));
-    let power = n - d;
+    const d = Math.ceil(Math.log10(num < 0 ? -num : num));
+    const power = n - d;
 
-    let magnitude = Math.pow(10, power);
-    let shifted = Math.round(num * magnitude);
+    const magnitude = Math.pow(10, power);
+    const shifted = Math.round(num * magnitude);
     return new BigNumber(shifted / magnitude);
   },
   walletType(type: WalletType): string {

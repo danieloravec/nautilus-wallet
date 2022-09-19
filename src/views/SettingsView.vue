@@ -11,7 +11,7 @@
         class="w-full control block"
       />
       <p class="input-error" v-if="(v$.walletSettings as any).name.$error">
-        {{ (v$.walletSettings as any).name.$errors[0].$message }}
+        {{ (v$.walletSettings as any).name.$errors[0]?.$message }}
       </p>
     </label>
     <div>
@@ -61,7 +61,7 @@
     <div class="text-xs text-gray-500 border-b-gray-300 border-b-1 uppercase pt-5">
       Global settings
     </div>
-    <div>
+    <div class="flex flex-col gap-5">
       <label class="w-full cursor-pointer align-middle flex flex-row items-center gap-5">
         <div class="flex-grow">
           <p>Currency conversion</p>
@@ -73,7 +73,7 @@
               :disabled="loading"
               class="w-full !py-1 appearance-none control cursor-pointer"
             >
-              <option v-for="currency in currencies" :value="currency">
+              <option v-for="currency in currencies" :value="currency" :key="currency">
                 {{ $filters.uppercase(currency) }}
               </option>
             </select>
@@ -83,6 +83,32 @@
             </div>
           </div>
         </div>
+      </label>
+      <div>
+        <label class="w-full cursor-pointer align-middle flex flex-row items-center gap-5">
+          <div class="flex-grow">
+            <p>Developer mode</p>
+          </div>
+          <div>
+            <o-switch v-model="globalSettings.devMode" class="align-middle float-right" />
+          </div>
+        </label>
+        <div class="text-gray-500 text-xs font-normal mt-1">
+          <p>Enable advanced tools.</p>
+        </div>
+      </div>
+      <label>
+        GraphQL server
+        <input
+          @blur="(v$.globalSettings as any).graphQLServer.$touch()"
+          v-model.lazy="globalSettings.graphQLServer"
+          type="text"
+          spellcheck="false"
+          class="w-full control block"
+        />
+        <p class="input-error" v-if="(v$.globalSettings as any).graphQLServer.$error">
+          {{ (v$.globalSettings as any).graphQLServer.$errors[0]?.$message }}
+        </p>
       </label>
     </div>
     <div class="text-xs text-gray-500 border-b-gray-300 border-b-1 uppercase pt-5">Danger zone</div>
@@ -106,20 +132,28 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from "vue";
-import { helpers, required } from "@vuelidate/validators";
-import { useVuelidate } from "@vuelidate/core";
+import { defineComponent, Ref } from "vue";
+import { helpers, required, url } from "@vuelidate/validators";
+import { useVuelidate, Validation, ValidationArgs } from "@vuelidate/core";
 import { mapActions, mapState } from "vuex";
 import { StateWallet, UpdateWalletSettingsCommand } from "@/types/internal";
 import { ACTIONS } from "@/constants/store";
 import { coinGeckoService } from "@/api/coinGeckoService";
 import ExtendedPublicKeyModal from "@/components/ExtendedPublicKeyModal.vue";
+import { MAINNET } from "@/constants/ergo";
+import { clone, isEqual } from "lodash";
+import {
+  getDefaultServerUrl,
+  validateServerNetwork,
+  validateServerVersion,
+  MIN_SERVER_VERSION
+} from "@/api/explorer/graphQlService";
 
 export default defineComponent({
   name: "SettingsView",
   components: { ExtendedPublicKeyModal },
   setup() {
-    return { v$: useVuelidate() };
+    return { v$: useVuelidate() as Ref<Validation<ValidationArgs<any>, unknown>> };
   },
   computed: {
     ...mapState({
@@ -145,6 +179,7 @@ export default defineComponent({
           this.walletChanged = false;
           return;
         }
+
         this.updateGlobal();
       }
     },
@@ -162,7 +197,7 @@ export default defineComponent({
   },
   created() {
     this.currencies = [this.settings.conversionCurrency];
-    this.globalSettings.conversionCurrency = this.settings.conversionCurrency;
+    this.globalSettings = clone(this.settings);
   },
   async mounted() {
     this.currencies = await coinGeckoService.getSupportedCurrencyConversion();
@@ -176,7 +211,9 @@ export default defineComponent({
         hideUsedAddresses: true
       },
       globalSettings: {
-        conversionCurrency: ""
+        conversionCurrency: "",
+        devMode: !MAINNET,
+        graphQLServer: ""
       },
       walletChanged: true,
       loading: true,
@@ -189,6 +226,31 @@ export default defineComponent({
       walletSettings: {
         name: {
           required: helpers.withMessage("Wallet name is required.", required)
+        }
+      },
+      globalSettings: {
+        graphQLServer: {
+          url: helpers.withMessage("Invalid URL.", url),
+          network: helpers.withMessage(
+            "Wrong server network.",
+            helpers.withAsync(async (url: string) => {
+              if (!url) {
+                return true;
+              }
+
+              return await validateServerNetwork(url);
+            })
+          ),
+          version: helpers.withMessage(
+            `Unsupported server version. Minimum required version: ${MIN_SERVER_VERSION.join(".")}`,
+            helpers.withAsync(async (url: string) => {
+              if (!url) {
+                return true;
+              }
+
+              return await validateServerVersion(url);
+            })
+          )
         }
       }
     };
@@ -206,10 +268,10 @@ export default defineComponent({
       }
     },
     async updateWallet() {
-      const isValid = await this.v$.$validate();
-      if (!isValid) {
+      if (!(await this.v$.walletSettings.$validate())) {
         return;
       }
+
       const command = {
         walletId: this.currentWallet.id,
         ...this.walletSettings
@@ -217,8 +279,17 @@ export default defineComponent({
       await this.updateWalletSettings(command);
     },
     async updateGlobal() {
-      if (this.settings.conversionCurrency != this.globalSettings.conversionCurrency) {
-        await this.saveSettings({ conversionCurrency: this.globalSettings.conversionCurrency });
+      if (!(await this.v$.globalSettings.$validate())) {
+        console.log(this.v$.$errors);
+        return;
+      }
+
+      if (!this.globalSettings.graphQLServer) {
+        this.globalSettings.graphQLServer = getDefaultServerUrl();
+      }
+
+      if (!isEqual(this.settings, this.globalSettings)) {
+        await this.saveSettings(this.globalSettings);
         this.fetchPrices();
       }
     }

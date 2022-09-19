@@ -4,20 +4,22 @@ import { find, isEmpty } from "lodash";
 import { connectedDAppsDbService } from "@/api/database/connectedDAppsDbService";
 import { postConnectorResponse } from "./messagingUtils";
 import {
-  handleGetBalanceRequest,
   handleGetBoxesRequest,
   handleGetChangeAddressRequest,
   handleGetAddressesRequest,
   handleNotImplementedRequest,
   handleSignTxRequest,
-  handleSubmitTxRequest
+  handleSubmitTxRequest,
+  handleAuthRequest,
+  handleGetBalanceRequest
 } from "./ergoApiHandlers";
 import { AddressState } from "@/types/internal";
 import { Browser } from "@/utils/browserApi";
+import { graphQLService } from "@/api/explorer/graphQlService";
 import "@/config/axiosConfig";
 
 const sessions = new Map<number, Session>();
-const ORIGIN_MATCHER = /^https?\:\/\/([^\/?#]+)(?:[\/?#]|$)/i;
+const ORIGIN_MATCHER = /^https?:\/\/([^/?#]+)(?:[/?#]|$)/i;
 
 function getOrigin(url?: string) {
   if (!url) {
@@ -31,6 +33,7 @@ function getOrigin(url?: string) {
 }
 
 Browser.runtime.onConnect.addListener((port: chrome.runtime.Port) => {
+  // eslint-disable-next-line no-console
   console.log(`connected with ${getOrigin(port.sender?.url)}`);
 
   if (port.name === "nautilus-ui") {
@@ -43,6 +46,9 @@ Browser.runtime.onConnect.addListener((port: chrome.runtime.Port) => {
               break;
             case "disconnected":
               handleOriginDisconnect(message);
+              break;
+            case "updated:graphql-url":
+              graphQLService.updateServerUrl(message.data);
               break;
           }
         } else if (message.type === "rpc/nautilus-response") {
@@ -83,6 +89,9 @@ Browser.runtime.onConnect.addListener((port: chrome.runtime.Port) => {
           break;
         case "getChangeAddress":
           await handleGetChangeAddressRequest(message, port, session);
+          break;
+        case "auth":
+          await handleAuthRequest(message, port, session);
           break;
         case "signTx":
           await handleSignTxRequest(message, port, session);
@@ -125,6 +134,16 @@ function sendRequestsToUI(port: chrome.runtime.Port) {
             value.favicon,
             request.message.params ? request.message.params[0] : undefined
           ]
+        } as RpcMessage);
+      } else if (request.message.function === "auth") {
+        port.postMessage({
+          type: "rpc/nautilus-request",
+          sessionId: key,
+          requestId: request.message.requestId,
+          function: request.message.function,
+          params: [value.origin, value.favicon].concat(
+            request.message.params ? request.message.params : undefined
+          )
         } as RpcMessage);
       } else {
         continue;

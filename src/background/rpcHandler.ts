@@ -10,6 +10,10 @@ class RpcHandler {
     this._messages = [];
   }
 
+  public get connected(): boolean {
+    return !!this._port;
+  }
+
   public sendMessage(message: RpcMessage): void {
     this._sendMessage(message);
   }
@@ -58,13 +62,19 @@ class RpcHandler {
       switch (message.function) {
         case "connect":
           router.replace({
-            name: "connector-auth",
+            name: "connector-connect",
             query: { popup: "true", auth: "true" }
           });
           break;
         case "signTx":
           router.replace({
             name: "connector-sign-tx",
+            query: { popup: "true" }
+          });
+          break;
+        case "auth":
+          router.replace({
+            name: "connector-auth",
             query: { popup: "true" }
           });
           break;

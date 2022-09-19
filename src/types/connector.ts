@@ -54,17 +54,17 @@ export enum TxSendErrorCode {
 
 export type TxSendError = {
   code: TxSendErrorCode;
-  info: String;
+  info: string;
 };
 
-export enum TxSignErrorCode {
+export enum SignErrorCode {
   ProofGeneration = 1,
   UserDeclined = 2
 }
 
-export type TxSignError = {
-  code: TxSignErrorCode;
-  info: String;
+export type SignError = {
+  code: SignErrorCode;
+  info: string;
 };
 
 export type Token = {
@@ -107,7 +107,7 @@ export type ErgoBox = {
   value: bigint | string;
   assets: Token[];
   additionalRegisters: Registers;
-  confirmed: boolean;
+  confirmed?: boolean;
 };
 
 export type DataInput = {
@@ -120,9 +120,14 @@ export type UnsignedTx = {
   outputs: ErgoBoxCandidate[];
 };
 
+export type InputSpendingProof = {
+  proofBytes: string;
+  extension: unknown;
+};
+
 export type Input = {
   readonly boxId: string;
-  readonly spendingProof: string;
+  readonly spendingProof: InputSpendingProof;
 };
 
 export type ErgoTx = {

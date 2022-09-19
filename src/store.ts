@@ -1,7 +1,6 @@
 import { walletsDbService } from "@/api/database/walletsDbService";
 import { createStore } from "vuex";
 import Bip32, { DerivedAddress } from "@/api/ergo/bip32";
-import { explorerService } from "@/api/explorer/explorerService";
 import BigNumber from "bignumber.js";
 import { coinGeckoService } from "@/api/coinGeckoService";
 import {
@@ -25,14 +24,15 @@ import {
   WalletType,
   AddressState,
   AddressType,
-  SendTxCommand,
-  SignTxFromConnectorCommand,
+  SignTxCommand,
   UpdateWalletSettingsCommand,
   UpdateChangeIndexCommand,
   UpdateUsedAddressesFilterCommand,
   StateAssetInfo,
   AssetType,
-  AssetSubtype
+  AssetSubtype,
+  SignEip28MessageCommand,
+  Eip28SignedMessage
 } from "@/types/internal";
 import { bip32Pool } from "@/utils/objectPool";
 import { StateAddress, StateAsset, StateWallet } from "@/types/internal";
@@ -42,28 +42,28 @@ import {
   ERG_TOKEN_ID,
   CHUNK_DERIVE_LENGTH,
   ERG_DECIMALS,
-  UNKNOWN_MINTING_BOX_ID
+  UNKNOWN_MINTING_BOX_ID,
+  MAINNET
 } from "@/constants/ergo";
 import { IDbAddress, IDbAsset, IAssetInfo, IDbDAppConnection, IDbWallet } from "@/types/database";
 import router from "@/router";
 import { addressesDbService } from "@/api/database/addressesDbService";
-import { assestsDbService } from "@/api/database/assetsDbService";
+import { assetsDbService } from "@/api/database/assetsDbService";
 import AES from "crypto-js/aes";
-import { TxBuilder } from "././api/ergo/transaction/txBuilder";
-import { SignContext } from "./api/ergo/transaction/signContext";
 import { connectedDAppsDbService } from "./api/database/connectedDAppsDbService";
 import { rpcHandler } from "./background/rpcHandler";
 import {
   extractAddressesFromInputs as extractP2PKAddressesFromInputs,
   getChangeAddress
 } from "./api/ergo/addresses";
-import { submitTx } from "./api/ergo/submitTx";
-import { fetchBoxes } from "./api/ergo/boxFetcher";
 import { utxosDbService } from "./api/database/utxosDbService";
 import { MIN_UTXO_SPENT_CHECK_TIME } from "./constants/intervals";
 import { assetInfoDbService } from "./api/database/assetInfoDbService";
 import { Token } from "./types/connector";
-import { AssetPriceRate } from "./types/explorer";
+import { buildEip28ResponseMessage } from "./api/ergo/eip28";
+import { Prover } from "./api/ergo/transaction/prover";
+import { getDefaultServerUrl, graphQLService } from "./api/explorer/graphQlService";
+import { AssetPriceRate, ergoDexService } from "./api/ergoDexService";
 
 function dbAddressMapper(a: IDbAddress) {
   return {
@@ -99,7 +99,10 @@ export default createStore({
     settings: {
       lastOpenedWalletId: 0,
       isKyaAccepted: false,
-      conversionCurrency: "usd"
+      conversionCurrency: "usd",
+      devMode: !MAINNET,
+      graphQLServer: getDefaultServerUrl(),
+      hideBalances: false
     },
     loading: {
       settings: true,
@@ -310,7 +313,7 @@ export default createStore({
         return;
       }
 
-      for (let info of assetsInfo) {
+      for (const info of assetsInfo) {
         state.assetInfo[info.id] = {
           name: info.name,
           decimals: info.decimals,
@@ -367,13 +370,18 @@ export default createStore({
       }
     },
     async [ACTIONS.LOAD_MARKET_RATES]({ commit }) {
-      const tokenMarketRates = await explorerService.getTokenRates();
+      const tokenMarketRates = await ergoDexService.getTokenRates();
       commit(MUTATIONS.SET_MARKET_RATES, tokenMarketRates);
     },
     [ACTIONS.LOAD_SETTINGS]({ commit }) {
       const rawSettings = localStorage.getItem("settings");
       if (rawSettings) {
-        commit(MUTATIONS.SET_SETTINGS, JSON.parse(rawSettings));
+        const parsed = JSON.parse(rawSettings);
+        if (!parsed.graphQLServer) {
+          parsed.graphQLServer = getDefaultServerUrl();
+        }
+
+        commit(MUTATIONS.SET_SETTINGS, parsed);
       }
       commit(MUTATIONS.SET_LOADING, { settings: false });
     },
@@ -381,7 +389,13 @@ export default createStore({
       if (newSettings) {
         commit(MUTATIONS.SET_SETTINGS, newSettings);
       }
+
       localStorage.setItem("settings", JSON.stringify(state.settings));
+
+      graphQLService.updateServerUrl(state.settings.graphQLServer);
+      if (rpcHandler.connected) {
+        rpcHandler.sendEvent("updated:graphql-url", state.settings.graphQLServer);
+      }
     },
     async [ACTIONS.LOAD_WALLETS]({ commit }) {
       const wallets = await walletsDbService.getAll();
@@ -413,7 +427,7 @@ export default createStore({
       bip32Pool.alloc(bip32.neutered(), bip32.publicKey.toString("hex"));
       const walletId = await walletsDbService.put({
         name: wallet.name.trim(),
-        network: Network.ErgoMainet,
+        network: Network.ErgoMainnet,
         type: wallet.type,
         publicKey: bip32.publicKey.toString("hex"),
         chainCode: bip32.chainCode.toString("hex"),
@@ -506,7 +520,7 @@ export default createStore({
       let used: string[] = [];
       let usedChunk: string[] = [];
       let lastUsed: string | undefined;
-      let lastStored = last(active)?.script;
+      const lastStored = last(active)?.script;
       const maxIndex = maxBy(active, (a) => a.index)?.index;
       let offset = maxIndex !== undefined ? maxIndex + 1 : 0;
 
@@ -516,19 +530,14 @@ export default createStore({
           dispatch(ACTIONS.LOAD_BALANCES, walletId);
         }
 
-        used = used.concat(
-          await explorerService.getUsedAddresses(
-            active.map((a) => a.script),
-            { chunkBy: CHUNK_DERIVE_LENGTH }
-          )
-        );
+        used = used.concat(await graphQLService.getUsedAddresses(active.map((a) => a.script)));
         lastUsed = last(used);
       }
 
       do {
         derived = bip32.deriveAddresses(CHUNK_DERIVE_LENGTH, offset);
         offset += derived.length;
-        usedChunk = await explorerService.getUsedAddresses(derived.map((a) => a.script));
+        usedChunk = await graphQLService.getUsedAddresses(derived.map((a) => a.script));
         used = used.concat(usedChunk);
         active = active.concat(
           derived.map((d) => ({
@@ -592,7 +601,7 @@ export default createStore({
       commit(MUTATIONS.SET_LOADING, { addresses: false });
     },
     async [ACTIONS.LOAD_BALANCES]({ commit, dispatch }, walletId: number) {
-      const assets = await assestsDbService.getByWalletId(walletId);
+      const assets = await assetsDbService.getByWalletId(walletId);
 
       await dispatch(
         ACTIONS.LOAD_ASSETS_INFO,
@@ -642,7 +651,7 @@ export default createStore({
         return;
       }
 
-      let info = await explorerService.getAssetsInfo(incompleteIds);
+      const info = await graphQLService.getAssetsInfo(incompleteIds);
       if (isEmpty(info)) {
         return;
       }
@@ -669,7 +678,7 @@ export default createStore({
       { commit, dispatch },
       data: { addresses: string[]; walletId: number }
     ) {
-      const balances = await explorerService.getAddressesBalance(data.addresses);
+      const balances = await graphQLService.getAddressesBalance(data.addresses);
       const assets = balances.map((x) => {
         return {
           tokenId: x.tokenId,
@@ -679,7 +688,7 @@ export default createStore({
           walletId: data.walletId
         } as IDbAsset;
       });
-      assestsDbService.sync(assets, data.walletId);
+      assetsDbService.sync(assets, data.walletId);
 
       await dispatch(ACTIONS.LOAD_ASSETS_INFO, {
         assetInfo: balances.map((x) => {
@@ -705,7 +714,7 @@ export default createStore({
       }
 
       const txIds = uniq(boxes.map((b) => b.spentTxId));
-      const mempoolResult = await explorerService.areTransactionsInMempool(txIds);
+      const mempoolResult = await graphQLService.areTransactionsInMempool(txIds);
       await utxosDbService.removeByTxId(txIds.filter((id) => mempoolResult[id] === false));
     },
     async [ACTIONS.FETCH_CURRENT_PRICES]({ commit, dispatch, state }) {
@@ -721,53 +730,7 @@ export default createStore({
       commit(MUTATIONS.SET_LOADING, { price: false });
       await dispatch(ACTIONS.LOAD_MARKET_RATES);
     },
-    async [ACTIONS.SEND_TX]({ dispatch, state }, command: SendTxCommand) {
-      if (state.currentWallet.settings.avoidAddressReuse) {
-        let unused = find(
-          state.currentAddresses,
-          (a) => a.state === AddressState.Unused && a.script !== command.recipient
-        );
-        if (!unused) {
-          await dispatch(ACTIONS.NEW_ADDRESS);
-        }
-      }
-
-      if (command.callback) {
-        command.callback({ statusText: "Loading data from the blockchain..." } as any);
-      }
-
-      const addresses = state.currentAddresses;
-      const walletType = state.currentWallet.type;
-      const selectedAddresses = addresses.filter((a) => a.state === AddressState.Used && a.balance);
-      const bip32 =
-        walletType === WalletType.Ledger
-          ? bip32Pool.get(state.currentWallet.publicKey)
-          : await Bip32.fromMnemonic(
-              await walletsDbService.getMnemonic(command.walletId, command.password)
-            );
-      command.password = "";
-
-      const changeAddress = state.currentWallet.settings.avoidAddressReuse
-        ? find(addresses, (a) => a.state === AddressState.Unused && a.script !== command.recipient)
-            ?.index ?? state.currentWallet.settings.defaultChangeIndex
-        : state.currentWallet.settings.defaultChangeIndex;
-
-      const boxes = await fetchBoxes(command.walletId);
-      const blockHeaders = await explorerService.getBlockHeaders({ limit: 10 });
-
-      const signedTx = await TxBuilder.from(selectedAddresses)
-        .to(command.recipient)
-        .changeIndex(changeAddress ?? 0)
-        .withAssets(command.assets)
-        .withFee(command.fee)
-        .fromBoxes(boxes)
-        .useLedger(walletType === WalletType.Ledger)
-        .setCallback(command.callback)
-        .sign(SignContext.fromBlockHeaders(blockHeaders).withBip32(bip32));
-
-      return await submitTx(signedTx, command.walletId);
-    },
-    async [ACTIONS.SIGN_TX_FROM_CONNECTOR]({ state }, command: SignTxFromConnectorCommand) {
+    async [ACTIONS.SIGN_TX]({ state }, command: SignTxCommand) {
       const inputAddresses = extractP2PKAddressesFromInputs(command.tx.inputs);
       const ownAddresses = await addressesDbService.getByWalletId(command.walletId);
       const addresses = ownAddresses
@@ -786,32 +749,50 @@ export default createStore({
       }
 
       if (command.callback) {
-        command.callback({ statusText: "Loading data from the blockchain..." } as any);
+        command.callback({ statusText: "Loading context data..." });
       }
 
       const walletType = state.currentWallet.type;
-      const bip32 =
+      const deriver =
         walletType === WalletType.Ledger
           ? bip32Pool.get(state.currentWallet.publicKey)
           : await Bip32.fromMnemonic(
               await walletsDbService.getMnemonic(command.walletId, command.password)
             );
-      command.password = "";
 
       const changeAddress = getChangeAddress(
         command.tx.outputs,
         ownAddresses.map((a) => a.script)
       );
-      const blockHeaders = await explorerService.getBlockHeaders({ limit: 10 });
-      const signedtx = await TxBuilder.from(addresses)
+      const blockHeaders = await graphQLService.getBlockHeaders({ take: 10 });
+
+      const signedTx = await new Prover(deriver)
+        .from(addresses)
         .useLedger(walletType === WalletType.Ledger)
         .changeIndex(find(ownAddresses, (a) => a.script === changeAddress)?.index ?? 0)
         .setCallback(command.callback)
-        .signFromConnector(command.tx, SignContext.fromBlockHeaders(blockHeaders).withBip32(bip32));
+        .sign(command.tx, blockHeaders);
 
-      return signedtx;
+      return graphQLService.mapTransaction(signedTx);
     },
+    async [ACTIONS.SIGN_EIP28_MESSAGE](
+      context,
+      command: SignEip28MessageCommand
+    ): Promise<Eip28SignedMessage> {
+      const ownAddresses = await addressesDbService.getByWalletId(command.walletId);
+      const deriver = await Bip32.fromMnemonic(
+        await walletsDbService.getMnemonic(command.walletId, command.password)
+      );
 
+      const signingAddress = ownAddresses.filter((x) => x.script === command.address);
+      const message = buildEip28ResponseMessage(command.message, command.origin);
+      const proofBytes = new Prover(deriver).from(signingAddress).signMessage(message);
+
+      return {
+        signedMessage: message,
+        proof: Buffer.from(proofBytes).toString("hex")
+      };
+    },
     async [ACTIONS.LOAD_CONNECTIONS]({ commit }) {
       const connections = await connectedDAppsDbService.getAll();
       commit(MUTATIONS.SET_CONNECTIONS, connections);
@@ -821,20 +802,23 @@ export default createStore({
       dispatch(ACTIONS.LOAD_CONNECTIONS);
       rpcHandler.sendEvent("disconnected", origin);
     },
-    async [ACTIONS.UPDATE_WALLET_SETTINGS]({ commit }, commad: UpdateWalletSettingsCommand) {
-      await walletsDbService.updateSettings(commad.walletId, commad.name, commad);
-      commit(MUTATIONS.SET_WALLET_SETTINGS, commad);
+    async [ACTIONS.UPDATE_WALLET_SETTINGS]({ commit }, command: UpdateWalletSettingsCommand) {
+      await walletsDbService.updateSettings(command.walletId, command.name, command);
+      commit(MUTATIONS.SET_WALLET_SETTINGS, command);
     },
-    async [ACTIONS.UPDATE_CHANGE_ADDRESS_INDEX]({ commit }, commad: UpdateChangeIndexCommand) {
-      await walletsDbService.updateChangeIndex(commad.walletId, commad.index);
-      commit(MUTATIONS.SET_DEFAULT_CHANGE_INDEX, commad);
+    async [ACTIONS.UPDATE_CHANGE_ADDRESS_INDEX]({ commit }, command: UpdateChangeIndexCommand) {
+      await walletsDbService.updateChangeIndex(command.walletId, command.index);
+      commit(MUTATIONS.SET_DEFAULT_CHANGE_INDEX, command);
     },
     async [ACTIONS.UPDATE_USED_ADDRESSES_FILTER](
       { commit },
-      commad: UpdateUsedAddressesFilterCommand
+      command: UpdateUsedAddressesFilterCommand
     ) {
-      await walletsDbService.updateUsedAddressFilter(commad.walletId, commad.filter);
-      commit(MUTATIONS.SET_USED_ADDRESSES_FILTER, commad);
+      await walletsDbService.updateUsedAddressFilter(command.walletId, command.filter);
+      commit(MUTATIONS.SET_USED_ADDRESSES_FILTER, command);
+    },
+    async [ACTIONS.TOGGLE_HIDE_BALANCES]({ dispatch, state }) {
+      dispatch(ACTIONS.SAVE_SETTINGS, { hideBalances: !state.settings.hideBalances });
     }
   }
 });

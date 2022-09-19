@@ -4,7 +4,7 @@
     :auto-focus="false"
     :can-cancel="true"
     scroll="clip"
-    content-class="max-h-95vh bg-transparent overflow-hidden !max-w-100 !w-90vw"
+    content-class="max-h-95vh bg-transparent relative overflow-hidden !max-w-100 !w-90vw"
   >
     <button @click="close()" type="button" class="fixed top-0 right-0 m-2 text-light-300">
       <mdi-icon name="close" size="24" />
@@ -36,7 +36,10 @@
           </div>
           <div class="w-1/2">
             <small class="uppercase text-gray-500">Balance</small>
-            <p class="text-sm font-bold">{{ $filters.formatBigNumber(confirmedBalance) ?? 0 }}</p>
+            <p v-if="hideBalances" class="skeleton animate-none h-4.5 w-2/4 block rounded"></p>
+            <p v-else class="text-sm font-bold">
+              {{ $filters.formatBigNumber(confirmedBalance) ?? 0 }}
+            </p>
           </div>
         </div>
         <div class="flex flex-row gap-4">
@@ -78,7 +81,7 @@ export default defineComponent({
   },
   props: {
     tokenId: { type: String, required: false },
-    confirmedBalance: { type: BigNumber as PropType<BigNumber.Value>, required: false }
+    confirmedBalance: { type: Object as PropType<BigNumber.Instance>, required: false }
   },
   computed: {
     emissionAmount(): string {
@@ -106,6 +109,9 @@ export default defineComponent({
       }
 
       return this.asset.artworkUrl ?? this.asset.artworkCover;
+    },
+    hideBalances(): boolean {
+      return this.$store.state.settings.hideBalances;
     }
   },
   data() {

@@ -1,4 +1,4 @@
-import { MAINNET_MINER_FEE_TREE, TESTNET_MINER_FEE_TREE } from "@/constants/ergo";
+import { MAINNET_MINER_FEE_TREE } from "@/constants/ergo";
 import { UnsignedTx, ErgoBoxCandidate, Token } from "@/types/connector";
 import { StateAssetInfo } from "@/types/internal";
 import { decimalize, sumBigNumberBy, toBigNumber } from "@/utils/bigNumbers";
@@ -8,7 +8,7 @@ import { addressFromErgoTree } from "../../addresses";
 import { OutputAsset, OutputInterpreter } from "./outputInterpreter";
 
 function isMinerFeeTree(ergoTree: string) {
-  return ergoTree === MAINNET_MINER_FEE_TREE || ergoTree === TESTNET_MINER_FEE_TREE;
+  return ergoTree === MAINNET_MINER_FEE_TREE;
 }
 
 export class TxInterpreter {
@@ -43,6 +43,10 @@ export class TxInterpreter {
     }
 
     this._calcBurningBalance();
+  }
+
+  public get rawTx(): UnsignedTx {
+    return this._tx;
   }
 
   public get from(): string[] {
@@ -80,13 +84,23 @@ export class TxInterpreter {
   }
 
   private _calcBurningBalance() {
-    const inputTotals = this._sumTokens(this._tx.inputs.map((x) => x.assets).flat());
+    const inputTotals = this._sumTokens(
+      this._tx.inputs
+        .filter((x) => x.assets)
+        .map((x) => x.assets)
+        .flat()
+    );
     if (!inputTotals) {
       this._burningBalance = [];
       return;
     }
 
-    const outputTotals = this._sumTokens(this._tx.outputs.map((x) => x.assets).flat());
+    const outputTotals = this._sumTokens(
+      this._tx.outputs
+        .filter((x) => x.assets)
+        .map((x) => x.assets)
+        .flat()
+    );
     if (outputTotals) {
       for (const key in outputTotals) {
         if (!inputTotals[key]) {

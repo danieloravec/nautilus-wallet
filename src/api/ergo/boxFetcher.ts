@@ -1,11 +1,10 @@
 import { ERG_TOKEN_ID } from "@/constants/ergo";
 import { ErgoBox } from "@/types/connector";
-import { explorerBoxMapper } from "@/types/explorer";
 import { difference, find, isEmpty, sortBy, unionBy } from "lodash";
 import { addressesDbService } from "../database/addressesDbService";
-import { assestsDbService } from "../database/assetsDbService";
+import { assetsDbService } from "../database/assetsDbService";
 import { utxosDbService } from "../database/utxosDbService";
-import { explorerService } from "../explorer/explorerService";
+import { graphQLService } from "../explorer/graphQlService";
 
 export async function fetchBoxes(
   walletId: number,
@@ -15,7 +14,7 @@ export async function fetchBoxes(
     includeUnconfirmed: true
   }
 ): Promise<ErgoBox[]> {
-  const addresses = await assestsDbService.getAddressesByTokenId(
+  const addresses = await assetsDbService.getAddressesByTokenId(
     walletId,
     options.tokenId ?? ERG_TOKEN_ID
   );
@@ -52,8 +51,8 @@ async function fetchBoxesFromExplorer(addresses: string[]): Promise<ErgoBox[]> {
     return [];
   }
 
-  const boxes = await explorerService.getAllUnspentBoxesByAddresses(addresses);
-  return boxes.map(explorerBoxMapper({ asConfirmed: true }));
+  const boxes = await graphQLService.getUnspentBoxes(addresses);
+  return boxes;
 }
 
 async function getAllAddresses(walletId: number): Promise<string[]> {
