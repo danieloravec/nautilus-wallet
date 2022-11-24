@@ -24,7 +24,7 @@ import {
   UnsignedBox
 } from "ledger-ergo-js";
 import { LedgerDeviceModelId, LedgerState } from "@/constants/ledger";
-import { addressFromErgoTree } from "../addresses";
+import { addressFromErgoTree, ergoTreeFromAddress } from "../addresses";
 import { Header } from "@ergo-graphql/types";
 import { toBigNumber } from "@/utils/bigNumbers";
 
@@ -125,8 +125,9 @@ export class Prover {
 
           const ergoTree = box.ergo_tree().to_base16_bytes().toString();
           const path =
-            find(this._from, (a) => a.script === addressFromErgoTree(ergoTree)) ??
-            first(this._from);
+            find(this._from, (a) =>
+              addressFromErgoTree(ergoTree).includes(ergoTreeFromAddress(a.script))
+            ) ?? first(this._from);
 
           if (!path) {
             throw Error(`Unable to find a sign path for ${input.box_id().to_str()}.`);
@@ -144,6 +145,7 @@ export class Prover {
             signPath: `${DERIVATION_PATH}/${path.index}`
           });
         }
+
         for (let i = 0; i < unsigned.output_candidates().len(); i++) {
           const wasmOutput = unsigned.output_candidates().get(i);
 

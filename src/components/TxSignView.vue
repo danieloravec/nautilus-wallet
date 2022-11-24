@@ -102,7 +102,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, PropType, Ref } from "vue";
+import { defineComponent, PropType } from "vue";
 import { mapState } from "vuex";
 import { ErgoTx, UnsignedTx } from "@/types/connector";
 import { TxInterpreter } from "@/api/ergo/transaction/interpreter/txInterpreter";
@@ -114,7 +114,7 @@ import {
   WalletType
 } from "@/types/internal";
 import { ACTIONS } from "@/constants/store";
-import { useVuelidate, Validation, ValidationArgs } from "@vuelidate/core";
+import { useVuelidate } from "@vuelidate/core";
 import { helpers, requiredUnless } from "@vuelidate/validators";
 import { PasswordError } from "@/types/errors";
 import LoadingModal from "@/components/LoadingModal.vue";
@@ -141,7 +141,7 @@ export default defineComponent({
   },
   setup() {
     return {
-      v$: useVuelidate() as Ref<Validation<ValidationArgs<any>, unknown>>
+      v$: useVuelidate()
     };
   },
   data() {

@@ -30,6 +30,10 @@ export function addressFromErgoTree(ergoTree: string) {
   return ErgoAddress.fromErgoTree(ergoTree, network).toString();
 }
 
+export function ergoTreeFromAddress(address: string) {
+  return ErgoAddress.fromBase58(address).ergoTree;
+}
+
 export function validateAddress(address: string) {
   const addr = ErgoAddress.fromBase58(address);
   return addr.isValid() && addr.network === network;
