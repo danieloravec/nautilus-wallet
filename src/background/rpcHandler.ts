@@ -4,26 +4,25 @@ import { Browser } from "@/utils/browserApi";
 
 class RpcHandler {
   private _messages: RpcMessage[];
-  private _port!: chrome.runtime.Port;
 
   constructor() {
     this._messages = [];
   }
 
   public get connected(): boolean {
-    return !!this._port;
+    return !Browser?.runtime;
   }
 
   public sendMessage(message: RpcMessage): void {
     this._sendMessage(message);
   }
 
-  private _sendMessage(message: any): void {
-    if (!this._port) {
-      throw Error("communication port is undefined");
+  private _sendMessage(message: RpcMessage | RpcEvent): void {
+    if (!Browser?.runtime) {
+      return;
     }
 
-    this._port.postMessage(message);
+    // Browser.runtime.sendMessage(message);
   }
 
   public sendEvent(event: string, data?: any): void;
@@ -47,43 +46,42 @@ class RpcHandler {
   }
 
   public start(): void {
-    if (!Browser.runtime) {
+    if (!Browser?.runtime) {
       return;
     }
 
-    this._port = Browser.runtime.connect({ name: "nautilus-ui" });
     this.sendEvent("loaded");
 
-    this._port.onMessage.addListener((message: RpcMessage, port) => {
-      if (message.type !== "rpc/nautilus-request") {
-        return;
-      }
+    // Browser.runtime.onMessage.addListener((message: RpcMessage) => {
+    //   if (message.type !== "rpc/nautilus-request") {
+    //     return;
+    //   }
 
-      switch (message.function) {
-        case "connect":
-          router.replace({
-            name: "connector-connect",
-            query: { popup: "true", auth: "true" }
-          });
-          break;
-        case "signTx":
-          router.replace({
-            name: "connector-sign-tx",
-            query: { popup: "true" }
-          });
-          break;
-        case "auth":
-          router.replace({
-            name: "connector-auth",
-            query: { popup: "true" }
-          });
-          break;
-        default:
-          return;
-      }
+    //   switch (message.function) {
+    //     case "connect":
+    //       router.replace({
+    //         name: "connector-connect",
+    //         query: { popup: "true", auth: "true" }
+    //       });
+    //       break;
+    //     case "signTx":
+    //       router.replace({
+    //         name: "connector-sign-tx",
+    //         query: { popup: "true" }
+    //       });
+    //       break;
+    //     case "auth":
+    //       router.replace({
+    //         name: "connector-auth",
+    //         query: { popup: "true" }
+    //       });
+    //       break;
+    //     default:
+    //       return;
+    //   }
 
-      this._messages.push(message);
-    });
+    //   this._messages.push(message);
+    // });
   }
 
   public get messages(): RpcMessage[] {

@@ -6,6 +6,17 @@ const { defineConfig } = require("@vue/cli-service");
 
 const commitHash = require("child_process").execSync("git rev-parse HEAD").toString().trim();
 const mainnet = !process.argv.includes("--testnet");
+const mf3 = !process.argv.includes("--mf2");
+
+function backgroundEntry() {
+  // workaround to support `webpack.entry` objects on vue-cli wrapper
+  process.env.VUE_CLI_ENTRY_FILES = undefined;
+
+  return {
+    import: "./src/background/background.ts",
+    chunkLoading: "import-scripts"
+  };
+}
 
 module.exports = defineConfig({
   publicPath: "/",
@@ -23,6 +34,9 @@ module.exports = defineConfig({
         chunks: "all"
       }
     },
+    entry: {
+      background: backgroundEntry()
+    },
     resolve: {
       fallback: {
         stream: require.resolve("stream-browserify")
@@ -37,7 +51,7 @@ module.exports = defineConfig({
       }),
       new WebpackExtensionManifestPlugin({
         config: {
-          base: "./src/manifest.json",
+          base: mf3 ? "./src/manifest.v3.json" : "./src/manifest.v2.json",
           extend: {
             name: mainnet ? "Nautilus Wallet" : "Nautilus Testnet",
             description: mainnet
@@ -53,8 +67,7 @@ module.exports = defineConfig({
     ]
   },
   pages: {
-    index: { entry: "src/main.ts", template: "public/index.html", title: "Nautilus" },
-    background: { entry: "src/background/background.ts", template: "public/background.html" }
+    index: { entry: "src/main.ts", template: "public/index.html", title: "Nautilus" }
   },
   chainWebpack: (config) => {
     config.output.filename("js/[name].js").chunkFilename("js/[name].js").end();

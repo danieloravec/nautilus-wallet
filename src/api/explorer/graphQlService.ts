@@ -155,13 +155,14 @@ class GraphQLService {
   }
 
   private _getCurrentServerUrl() {
-    const rawSettings = localStorage.getItem("settings");
-    if (!rawSettings) {
-      return getDefaultServerUrl();
-    }
+    return GRAPHQL_SERVERS[0];
+    // const rawSettings = localStorage.getItem("settings");
+    // if (!rawSettings) {
+    //   return getDefaultServerUrl();
+    // }
 
-    const url = JSON.parse(rawSettings).graphQLServer;
-    return !url ? getDefaultServerUrl() : url;
+    // const url = JSON.parse(rawSettings).graphQLServer;
+    // return !url ? getDefaultServerUrl() : url;
   }
 
   private _getTxBroadcastClient(): Client {

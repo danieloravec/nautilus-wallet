@@ -1,4 +1,4 @@
-function getApiInstance() {
+function getApiInstance(): typeof chrome | undefined {
   if (typeof browser !== "undefined") {
     return browser;
   } else if (typeof chrome !== "undefined") {
@@ -11,11 +11,11 @@ function getApiInstance() {
 export const Browser = getApiInstance();
 
 export function hasBrowserContext(): boolean {
-  return typeof Browser !== "undefined";
+  return Browser !== undefined;
 }
 
 export function isPopup() {
-  if (!hasBrowserContext() || !Browser.extension) {
+  if (!Browser || !Browser.extension) {
     return false;
   }
 

@@ -82,7 +82,7 @@ export default defineComponent({
   methods: {
     ...mapActions({ setCurrentWallet: ACTIONS.SET_CURRENT_WALLET }),
     async expandView() {
-      if (!Browser.tabs) {
+      if (!Browser || !Browser.tabs) {
         return;
       }
 

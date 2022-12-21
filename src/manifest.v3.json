@@ -1,0 +1,37 @@
+{
+  "short_name": "Nautilus",
+  "manifest_version": 3,
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';"
+  },
+  "permissions": ["storage", "activeTab", "scripting", "tabs"],
+  "host_permissions": ["<all_urls>"],
+  "action": {
+    "default_popup": "index.html",
+    "default_title": "Nautilus Wallet"
+  },
+  "background": {
+    "service_worker": "js/background.js"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "index.html",
+        "js/injector.js",
+        "js/background.js",
+        "js/connection.js",
+        "js/context.js"
+      ],
+      "matches": ["*://*/*"],
+      "extension_ids": []
+    }
+  ],
+  "content_scripts": [
+    {
+      "matches": ["*://*/*"],
+      "js": ["js/injector.js"],
+      "run_at": "document_start",
+      "all_frames": true
+    }
+  ]
+}

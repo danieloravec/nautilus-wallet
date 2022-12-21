@@ -4,7 +4,7 @@ const POPUP_SIZE = { width: 380, height: 640 };
 
 function getDefaultBounds() {
   return {
-    width: screen.availWidth,
+    width: typeof screen !== "undefined" ? screen.availWidth : undefined,
     positionX: 0,
     positionY: 0
   };
@@ -20,17 +20,17 @@ function getBoundsForWindow(targetWindow: chrome.windows.Window) {
 }
 
 export function getBoundsForTabWindow(
-  targetTabId: any
-): Promise<{ width: number; positionX: number; positionY: number }> {
+  targetTabId: number
+): Promise<{ width?: number; positionX: number; positionY: number }> {
   return new Promise((resolve) => {
-    Browser.tabs.get(targetTabId, (tab: chrome.tabs.Tab) => {
+    Browser?.tabs.get(targetTabId, (tab) => {
       if (!tab) {
-        return resolve(getDefaultBounds());
+        resolve(getDefaultBounds());
       }
 
-      Browser.windows.get(tab.windowId, (targetWindow: chrome.windows.Window) => {
+      Browser?.windows.get(tab.windowId, (targetWindow) => {
         if (!targetWindow) {
-          return resolve(getDefaultBounds());
+          resolve(getDefaultBounds());
         }
 
         resolve(getBoundsForWindow(targetWindow));
@@ -39,14 +39,14 @@ export function getBoundsForTabWindow(
   });
 }
 
-export async function openWindow(tabId?: number) {
+export async function openWindow(tabId: number) {
   const bounds = await getBoundsForTabWindow(tabId);
-  Browser.windows.create({
+  Browser?.windows.create({
     ...POPUP_SIZE,
     focused: true,
     type: "popup",
-    url: Browser.extension.getURL("index.html"),
-    left: bounds.width + bounds.positionX - (POPUP_SIZE.width + 10),
+    url: "index.html",
+    left: bounds.width ? bounds.width + bounds.positionX - (POPUP_SIZE.width + 10) : undefined,
     top: bounds.positionY + 40
   });
 }

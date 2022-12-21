@@ -16,7 +16,7 @@ import {
 } from "./ergoApiHandlers";
 import { AddressState } from "@/types/internal";
 import { Browser } from "@/utils/browserApi";
-import { graphQLService } from "@/api/explorer/graphQlService";
+// import { graphQLService } from "@/api/explorer/graphQlService";
 
 const sessions = new Map<number, Session>();
 const ORIGIN_MATCHER = /^https?:\/\/([^/?#]+)(?:[/?#]|$)/i;
@@ -32,39 +32,35 @@ function getOrigin(url?: string) {
   }
 }
 
-Browser.runtime.onConnect.addListener((port: chrome.runtime.Port) => {
-  // eslint-disable-next-line no-console
-  console.log(`connected with ${getOrigin(port.sender?.url)}`);
+chrome.runtime.onMessage.addListener(
+  async (message: RpcMessage | RpcEvent, sender, sendResponse) => {
+    console.log(message.type, message);
+    const origin = getOrigin(sender.url);
+    const tabId = sender?.tab?.id;
+    if (!sender || !origin || !tabId) {
+      return;
+    }
 
-  if (port.name === "nautilus-ui") {
-    port.onMessage.addListener(
-      async (message: RpcMessage | RpcEvent, port: chrome.runtime.Port) => {
-        if (message.type === "rpc/nautilus-event") {
-          switch (message.name) {
-            case "loaded":
-              sendRequestsToUI(port);
-              break;
-            case "disconnected":
-              handleOriginDisconnect(message);
-              break;
-            case "updated:graphql-url":
-              graphQLService.updateServerUrl(message.data);
-              break;
-          }
-        } else if (message.type === "rpc/nautilus-response") {
-          handleNautilusResponse(message);
-        }
-      }
-    );
-  } else {
-    port.onMessage.addListener(async (message: RpcMessage, port: chrome.runtime.Port) => {
-      const origin = getOrigin(port.sender?.url);
-      const tabId = port.sender?.tab?.id;
-      if (message.type !== "rpc/connector-request" || !port.sender || !origin || !tabId) {
-        return;
-      }
+    const port = { sender, postMessage: sendResponse };
 
+    if (message.type === "rpc/nautilus-event") {
+      switch (message.name) {
+        case "loaded":
+          sendRequestsToUI(port);
+          break;
+        case "disconnected":
+          handleOriginDisconnect(message);
+          break;
+        case "updated:graphql-url":
+          // graphQLService.updateServerUrl(message.data);
+          break;
+      }
+    } else if (message.type === "rpc/nautilus-response") {
+      handleNautilusResponse(message);
+    } else if (message.type === "rpc/connector-request") {
       const session = sessions.get(tabId);
+      console.log(port);
+
       switch (message.function) {
         case "connect":
           await handleConnectionRequest(message, port, origin);
@@ -75,43 +71,122 @@ Browser.runtime.onConnect.addListener((port: chrome.runtime.Port) => {
         case "checkConnection":
           handleCheckConnectionRequest(message, port);
           break;
-        case "getBoxes":
-          await handleGetBoxesRequest(message, port, session);
-          break;
+        // case "getBoxes":
+        //   await handleGetBoxesRequest(message, port, session);
+        //   break;
         case "getBalance":
           await handleGetBalanceRequest(message, port, session);
           break;
-        case "getUsedAddresses":
-          await handleGetAddressesRequest(message, port, session, AddressState.Used);
-          break;
-        case "getUnusedAddresses":
-          await handleGetAddressesRequest(message, port, session, AddressState.Unused);
-          break;
-        case "getChangeAddress":
-          await handleGetChangeAddressRequest(message, port, session);
-          break;
-        case "auth":
-          await handleAuthRequest(message, port, session);
-          break;
-        case "signTx":
-          await handleSignTxRequest(message, port, session);
-          break;
-        case "signTxInput":
-        case "signData":
-          await handleNotImplementedRequest(message, port, session);
-          break;
-        case "getCurrentHeight":
-          await handleGetCurrentHeightRequest(message, port, session);
-          break;
-        case "submitTx":
-          await handleSubmitTxRequest(message, port, sessions.get(tabId));
-          break;
+        // case "getUsedAddresses":
+        //   await handleGetAddressesRequest(message, port, session, AddressState.Used);
+        //   break;
+        // case "getUnusedAddresses":
+        //   await handleGetAddressesRequest(message, port, session, AddressState.Unused);
+        //   break;
+        // case "getChangeAddress":
+        //   await handleGetChangeAddressRequest(message, port, session);
+        //   break;
+        // case "auth":
+        //   await handleAuthRequest(message, port, session);
+        //   break;
+        // case "signTx":
+        //   await handleSignTxRequest(message, port, session);
+        //   break;
+        // case "signTxInput":
+        // case "signData":
+        //   await handleNotImplementedRequest(message, port, session);
+        //   break;
+        // case "getCurrentHeight":
+        //   await handleGetCurrentHeightRequest(message, port, session);
+        //   break;
+        // case "submitTx":
+        //   await handleSubmitTxRequest(message, port, sessions.get(tabId));
+        //   break;
       }
-    });
+    }
   }
-});
+);
 
-function sendRequestsToUI(port: chrome.runtime.Port) {
+// Browser.runtime.onConnect.addListener((port: any) => {
+//   // eslint-disable-next-line no-console
+//   console.log(`connected with ${getOrigin(port.sender?.url)}`);
+
+//   if (port.name === "nautilus-ui") {
+//     port.onMessage.addListener(
+//       async (message: RpcMessage | RpcEvent, port: any) => {
+//         if (message.type === "rpc/nautilus-event") {
+//           switch (message.name) {
+//             case "loaded":
+//               sendRequestsToUI(port);
+//               break;
+//             case "disconnected":
+//               handleOriginDisconnect(message);
+//               break;
+//             case "updated:graphql-url":
+//               graphQLService.updateServerUrl(message.data);
+//               break;
+//           }
+//         } else if (message.type === "rpc/nautilus-response") {
+//           handleNautilusResponse(message);
+//         }
+//       }
+//     );
+//   } else {
+//     port.onMessage.addListener(async (message: RpcMessage, port: any) => {
+//       const origin = getOrigin(port.sender?.url);
+//       const tabId = port.sender?.tab?.id;
+//       if (message.type !== "rpc/connector-request" || !port.sender || !origin || !tabId) {
+//         return;
+//       }
+
+//       const session = sessions.get(tabId);
+//       switch (message.function) {
+//         case "connect":
+//           await handleConnectionRequest(message, port, origin);
+//           break;
+//         case "disconnect":
+//           await handleDisconnectRequest(message, port, origin);
+//           break;
+//         case "checkConnection":
+//           handleCheckConnectionRequest(message, port);
+//           break;
+//         case "getBoxes":
+//           await handleGetBoxesRequest(message, port, session);
+//           break;
+//         case "getBalance":
+//           await handleGetBalanceRequest(message, port, session);
+//           break;
+//         case "getUsedAddresses":
+//           await handleGetAddressesRequest(message, port, session, AddressState.Used);
+//           break;
+//         case "getUnusedAddresses":
+//           await handleGetAddressesRequest(message, port, session, AddressState.Unused);
+//           break;
+//         case "getChangeAddress":
+//           await handleGetChangeAddressRequest(message, port, session);
+//           break;
+//         case "auth":
+//           await handleAuthRequest(message, port, session);
+//           break;
+//         case "signTx":
+//           await handleSignTxRequest(message, port, session);
+//           break;
+//         case "signTxInput":
+//         case "signData":
+//           await handleNotImplementedRequest(message, port, session);
+//           break;
+//         case "getCurrentHeight":
+//           await handleGetCurrentHeightRequest(message, port, session);
+//           break;
+//         case "submitTx":
+//           await handleSubmitTxRequest(message, port, sessions.get(tabId));
+//           break;
+//       }
+//     });
+//   }
+// });
+
+function sendRequestsToUI(port: any) {
   for (const [key, value] of sessions.entries()) {
     if (isEmpty(value.requestQueue)) {
       continue;
@@ -158,13 +233,10 @@ function sendRequestsToUI(port: chrome.runtime.Port) {
   }
 }
 
-async function handleConnectionRequest(
-  message: RpcMessage,
-  port: chrome.runtime.Port,
-  origin: string
-) {
+async function handleConnectionRequest(message: RpcMessage, port: any, origin: string) {
   let response: RpcReturn = { isSuccess: true, data: true };
   const connection = await connectedDAppsDbService.getByOrigin(origin);
+  console.log("connes");
   if (connection) {
     const tabId = port.sender?.tab?.id;
     if (!tabId || !port.sender?.url) {
@@ -180,6 +252,8 @@ async function handleConnectionRequest(
       requestQueue: []
     });
   } else {
+    console.log("show");
+
     response = await showConnectionWindow(message, port);
   }
 
@@ -191,11 +265,7 @@ async function handleConnectionRequest(
   postConnectorResponse(response, message, port, "auth");
 }
 
-async function handleDisconnectRequest(
-  request: RpcMessage,
-  port: chrome.runtime.Port,
-  origin?: string
-) {
+async function handleDisconnectRequest(request: RpcMessage, port: any, origin?: string) {
   if (!origin) {
     postConnectorResponse(
       {
@@ -228,7 +298,7 @@ async function handleDisconnectRequest(
   );
 }
 
-function handleCheckConnectionRequest(request: RpcMessage, port: chrome.runtime.Port) {
+function handleCheckConnectionRequest(request: RpcMessage, port: any) {
   const tabId = port.sender?.tab?.id;
   const session = tabId !== undefined ? sessions.get(tabId) : undefined;
 
@@ -275,10 +345,7 @@ function handleOriginDisconnect(event: RpcEvent) {
   } as RpcEvent);
 }
 
-async function showConnectionWindow(
-  message: RpcMessage,
-  port: chrome.runtime.Port
-): Promise<RpcReturn> {
+async function showConnectionWindow(message: RpcMessage, port: any): Promise<RpcReturn> {
   return new Promise((resolve, reject) => {
     const tabId = port.sender?.tab?.id;
     const origin = getOrigin(port.sender?.url);

@@ -23,7 +23,12 @@
     "src/**/*.vue",
     "src/@types/*",
     "tests/**/*.ts",
-    "tests/**/*.tsx"
+    "tests/**/*.tsx",
+    "src/content-scripts/context.js",
+    "src/content-scripts/context.js",
+    "src/content-scripts/context.js",
+    "src/content-scripts/context.js",
+    "src/content-scripts/context.js"
   ],
   "exclude": ["node_modules"]
 }

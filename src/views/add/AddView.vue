@@ -75,8 +75,9 @@ export default defineComponent({
   },
   methods: {
     navInTab(navigate: () => unknown, href: string) {
-      if (!isPopup() || !Browser.tabs) {
+      if (!Browser || !isPopup() || !Browser.tabs) {
         navigate();
+        return;
       }
 
       Browser.tabs.create({
