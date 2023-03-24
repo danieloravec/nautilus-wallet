@@ -2,6 +2,11 @@
   <div
     class="shadow-scroll text-sm flex-grow flex flex-col gap-4 leading-relaxed overflow-auto px-4 -mx-4 py-1"
   >
+    <tx-sign-summary
+      v-if="tx"
+      :tx="tx"
+      :ownAddresses="addresses.map((a) => a.script)"
+    ></tx-sign-summary>
     <tx-box-details v-if="tx?.burning" :assets="tx?.burning" type="danger">
       <p>Burning</p>
       <template v-slot:subheader
@@ -143,10 +148,12 @@ import { OutputInterpreter } from "@/api/ergo/transaction/interpreter/outputInte
 import VueJsonPretty from "vue-json-pretty";
 import "vue-json-pretty/lib/styles.css";
 import { AddressType } from "@fleet-sdk/core";
+import TxSignSummary from "@/components/SignTxSummary.vue";
 
 export default defineComponent({
   name: "TxSignView",
   components: {
+    TxSignSummary,
     LoadingModal,
     TxBoxDetails,
     VueJsonPretty
